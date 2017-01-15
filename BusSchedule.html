@@ -96,7 +96,7 @@ Date.prototype.toHHMMSS = function () {
 
 function showBusLocation2(route, blockNumber) {
 	var xmlhttp8 = new XMLHttpRequest();
-	var url8 = "http://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
+	var url8 = "https://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
 
 	console.log("url8=" + url8);
 	
@@ -197,7 +197,7 @@ function selectRoute() {
 	}
 
 	var xmlhttp3 = new XMLHttpRequest();
-	var url3 = "http://svc.metrotransit.org/NexTrip/Routes?format=json";
+	var url3 = "https://svc.metrotransit.org/NexTrip/Routes?format=json";
 
 	xmlhttp3.onreadystatechange=function() {
 		if (xmlhttp3.readyState == 4 && xmlhttp3.status == 200) {
@@ -256,7 +256,7 @@ function selectRouteDirections2(route, shouldCreateButton) {
 	}
 
 	var xmlhttp4 = new XMLHttpRequest();
-	var url4 = "http://svc.metrotransit.org/NexTrip/Directions/" + route + "?format=json";
+	var url4 = "https://svc.metrotransit.org/NexTrip/Directions/" + route + "?format=json";
 	
 	// [{"Text":"NORTHBOUND","Value":"4"},{"Text":"SOUTHBOUND","Value":"1"}]
 	// 1 = South, 2 = East, 3 = West, 4 = North.
@@ -312,7 +312,7 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 	}
 
 	var xmlhttp5 = new XMLHttpRequest();
-	var url5 = "http://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
+	var url5 = "https://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
 
 	xmlhttp5.onreadystatechange=function(shouldCreateButtons) {
 		if (xmlhttp5.readyState == 4 && xmlhttp5.status == 200) {
@@ -357,7 +357,7 @@ function getDepartures(route, direction, stop) {
 	//  Sensitive to whether the stop has times scheduled
 
 	var xmlhttp6 = new XMLHttpRequest();
-	var url6 = "http://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
+	var url6 = "https://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
 	console.log("url6=" + url6);
 	
 	xmlhttp6.onreadystatechange=function() {
