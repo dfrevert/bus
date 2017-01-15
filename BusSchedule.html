@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+
+<!-- copied from WC3, is this sufficient? no, it fails without modernizer.js still not enough the direction buttons never appear -->
+<!--  this fails
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+-->
+
+<!-- this works 
+	<link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="./modernizr/modernizr.js" ></script>
+	<script src="./jquery/jquery-2.1.4.js" ></script>
+	<script src="./bootstrap/js/bootstrap.min.js" ></script>
+-->
+
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
+	<!-- todo: create/download a smaller modernizr -->
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<!-- loads if googleapis is not available -->
+	<script>if (typeof jQuery === 'undefined') {
+	  document.write(unescape('%3Cscript%20src%3D%22./jquery/jquery-2.1.4.js%22%3E%3C/script%3E'));
+	}
+	</script>	
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+	<style>
+@keyframes greenToRed {
+    0%   {background-color: green;}
+    25%  {background-color: green;}
+    40%  {background-color: yellow;}
+    50% {background-color: red;}
+    51% {background-color: orange;}
+    100% {background-color: blue;}
+}
+div#id00C button.btn.btn-primary {
+	animation-name: greenToRed;
+	animation-duration: 60s;
+}
+	</style>
+
+<script type="text/javascript">
+
+var version = '20160704_1801';
+
+// angle in degrees
+
+// display the current time that the data was retrieved   (20160319 done)
+
+// improvements
+//          Home or Office
+//                   Home -- Option 1 -- Route, Direction, Letter(E or C or N), StopNumber, StopBefore, StopAfter
+//                        --        2 -- 
+//                   Office -- Option 1 -- 
+//
+//     StopBeyond - query the stop beyond to see if you just missed it, or the data was dropped.
+//     StopObject - StopNumber, Route, Direction, GPS coordinates, StopBeyond
+//                  should be able to simplify multiple declarations of "http://svc.metrotransit.org/NexTrip/17884?format=json"
+
+// to use the url that is stop specific, there is a need to tie into the data updated weekly at: http://datafinder.org/metadata/transit_schedule_google_feed.html
+//        a zip file containing
+//             routes.txt	route_id
+//                          agency_id
+//             trips.txt   route_id
+//                         trip_id
+//                         direction_id (optional)
+//             stop_times.txt	trip_id
+//                              stop_id
+//             stops.txt     stop_id
+//                           stop_name
+//                           stop_lat
+//                           stop_lon
+//  all this to present a user with a list of stops on a particular route?  No - stop_times.txt may not be defined.  No wonder you're expected to use Google Maps to locate the bus stop #!
+//
+//  miles column, should show the direction letter -- done
+//  provide a stop description to go along with the text "14 - N - BL54"  -- done
+//
+//  133 route often loses the row after the bus leaves Gateway, but before it arrives at 4th & Marquette.   Keep the row in memory.  For 10 minutes?  Why does it disappear?
+//
+//  Workflow of Route -> Direction -> Scheduled Stop  can leave the user confused.  Especially the Route -> Direction step, when NORTHBOUND SOUTHBOUND disappear one row above the "Route - Direction - Stop" button.
+//        all are Blue.
+//
+
+// to use:     alert("current time is " + new Date().toHHMMSS());
+Date.prototype.toHHMMSS = function () {
+	// want everything up to the first space
+	var timeString = this.toTimeString();
+	var spaceAt = timeString.indexOf(" ");
+	return timeString.substr(0, spaceAt);
+}
+
+function showBusLocation2(route, blockNumber) {
+	var xmlhttp8 = new XMLHttpRequest();
+	var url8 = "http://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
+
+	console.log("url8=" + url8);
+	
+	xmlhttp8.onreadystatechange=function() {
+		if (xmlhttp8.readyState == 4 && xmlhttp8.status == 200) {
+			populateVehicleLocations2(route, blockNumber, xmlhttp8.responseText);
+		}
+	}
+	xmlhttp8.open("GET", url8, true);
+	xmlhttp8.send();
+}
+
+function populateVehicleLocations2(route, blockNumber, responseText) {
+	var arr = JSON.parse(responseText);
+    var i;
+    for(i = 0; i < arr.length; i++) {
+		// console.log(arr[i]);
+		if(arr[i].Route == route && arr[i].BlockNumber == blockNumber) {
+			var newValue = "{\"direction\":" + arr[i].Direction + ", \"locationTime\":\"" + arr[i].LocationTime + "\", \"latitude\":" + arr[i].VehicleLatitude + ", \"longitude\":" + arr[i].VehicleLongitude + "}";
+
+			setDbValue("VehicleLocation." + route + "." + blockNumber, newValue);
+			// console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
+
+			rewriteActualTableData(route, blockNumber);
+			return;
+		}
+		// Object { Bearing: 0, BlockNumber: 1203, Direction: 4, LocationTime: "/Date(1447298877000-0600)/", 
+		//          Odometer: 0, Route: "14", Speed: 0, Terminal: "R", 
+		//          VehicleLatitude: 44.864286, VehicleLongitude: -93.243361 }
+	}
+}
+
+var secondsElapsedOffset = 0;
+function rewriteActualTableData(route, blockNumber) {
+	// nn sec ago:  (up to 100)   n.n min ago:  (up to 5 minutes)
+	// miles & direction
+	var s = "";
+	var busLastAt = JSON.parse(getDbValue("VehicleLocation." + route + "." + blockNumber));
+	var busLocationTime = fromDateString(busLastAt.locationTime);
+	
+	var now = new Date();
+	var timezoneOffsetInMinutes = now.getTimezoneOffset();
+	var secondsElapsed = (now - busLocationTime.getTime() + (1000 * 60 * timezoneOffsetInMinutes)) / 1000;
+	// secondsElapsed should never be less than 0
+	//                is an indication that the local clock and the Server clock differ
+	//                need to save an offset value.
+	if(secondsElapsed < 0 && secondsElapsedOffset < 60) {
+		console.log("secondsElapsedOffset=" + secondsElapsedOffset);
+		console.log("secondsElapsed=" + secondsElapsed);
+		secondsElapsedOffset = -secondsElapsed + secondsElapsedOffset;
+		console.log("secondsElapsedOffset=" + secondsElapsedOffset + " adjusted");
+	}
+	secondsElapsed = secondsElapsed + secondsElapsedOffset;
+	if(0 <= secondsElapsed && secondsElapsed < 100) {
+		s += secondsElapsed.toFixed(0) + " sec ago";
+	}
+	else {
+		s += (secondsElapsed/60).toFixed(1) + " min ago";
+	}
+	s += "<br>";
+
+	// ScheduledStop info
+	var busAtPoint = {"latitude": busLastAt.latitude, "longitude": busLastAt.longitude};
+
+	var activeRouteDirectionStop = JSON.parse(getDbValue("RouteDirectionStopActive"));
+	var activeStop = JSON.parse(getDbValue("Stop." + activeRouteDirectionStop.stop));
+	var busStopPoint =  {"latitude": activeStop.latitude, "longitude": activeStop.longitude};
+
+	var milesAway = miles(busAtPoint, busStopPoint);
+	
+	s += milesAndDirection(milesAway);
+	document.getElementById("Actual_" + route + "_" + blockNumber).innerHTML = s; 
+}
+
+// like:   "\/Date(1447715700000-0600)\/"
+function fromDateString(str) {
+    var res = str.match(/\/Date\((\d+)(?:([+-])(\d\d)(\d\d))?\)\//);
+    if (res == null)
+        return new Date(NaN); // or something that indicates it was not a DateString
+    var time = parseInt(res[1], 10);
+    if (res[2] && res[3] && res[4]) {
+        var dir = res[2] == "+" ? -1 : 1,
+            h = parseInt(res[3], 10),
+            m = parseInt(res[4], 10);
+        time += dir * (h*60+m) * 60000;
+    }
+    return new Date(time);
+}
+
+function selectRoute() {
+	// if we already know the routes, saved to localStorage, use that.
+	if(Modernizr.localstorage) {
+		var p =  getDbValue("Routes");
+		if(p != null) {
+			populateRoutes(p);
+			return;
+		}
+	}
+
+	var xmlhttp3 = new XMLHttpRequest();
+	var url3 = "http://svc.metrotransit.org/NexTrip/Routes?format=json";
+
+	xmlhttp3.onreadystatechange=function() {
+		if (xmlhttp3.readyState == 4 && xmlhttp3.status == 200) {
+			populateRoutes(xmlhttp3.responseText);
+			setDbValue("Routes", xmlhttp3.responseText);
+		}
+	}
+	xmlhttp3.open("GET", url3, true);
+	xmlhttp3.send();
+}
+
+function populateRoutes(responseText) {
+	var arr = JSON.parse(responseText);
+    var i;
+	var out = '<div id="routeButtonGroup" class="btn-group btn-group-sm" >';
+    for(i = 0; i < arr.length; i++) {
+		out += '<button type="button" class="btn btn-primary col-md-1" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
+		// arr[i].Description +
+		// arr[i].ProviderID +
+		// arr[i].Route +
+	}
+    out += "</div>";
+    document.getElementById("id00A").innerHTML = out;
+	document.getElementById("id00A").style.display = "block";
+}
+
+$('#routeButtonGroup button').click(function() {
+    $(this).addClass('active').siblings().removeClass('active');
+
+	myRoute = $(this).Value;
+    // TODO: insert whatever you want to do with $(this) here
+});
+
+
+function routeClicked(route) {
+	myRoute = route;
+	selectRouteDirections(route);
+}
+
+// --------------------- RouteDirections
+function selectRouteDirections(route) {
+	selectRouteDirections2(route, true);
+}
+
+// --------------------- RouteDirections
+function selectRouteDirections2(route, shouldCreateButton) {
+	// if route directions are known, use them
+	if(Modernizr.localstorage) {
+		var p =  getDbValue("RouteDirections." + route);
+		if(p != null) {
+			if(shouldCreateButton) {
+				populateRouteDirections(route, p);
+			}
+			return;
+		}
+	}
+
+	var xmlhttp4 = new XMLHttpRequest();
+	var url4 = "http://svc.metrotransit.org/NexTrip/Directions/" + route + "?format=json";
+	
+	// [{"Text":"NORTHBOUND","Value":"4"},{"Text":"SOUTHBOUND","Value":"1"}]
+	// 1 = South, 2 = East, 3 = West, 4 = North.
+	// one of 2 possible settings   ns or ew, each will cause the UI to show 2 buttons.
+
+	xmlhttp4.onreadystatechange=function(shouldCreateButton) {
+		if (xmlhttp4.readyState == 4 && xmlhttp4.status == 200) {
+			if(shouldCreateButton) {
+				populateRouteDirections(route, xmlhttp4.responseText);
+			}
+			setDbValue("RouteDirections." + route, xmlhttp4.responseText);
+		}
+	}
+	xmlhttp4.open("GET", url4, true);
+	xmlhttp4.send();
+}
+
+function populateRouteDirections(route, responseText) {
+	var arr = JSON.parse(responseText);
+    var i;
+	var out = '<div id="routeDirectionButtonGroup" class="btn-group" >';
+    for(i = 0; i < arr.length; i++) {
+		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionClicked(' + route + ', ' + arr[i].Value + ')" >' + arr[i].Text + '</button>';
+	}
+    out += "</div>";
+    document.getElementById("id00A").innerHTML = out;
+	document.getElementById("id00A").style.display = "block";
+}
+
+function routeDirectionClicked(route, direction) {
+	myRoute = route;
+	myDirection = direction;
+	// console.log("myRoute=" + myRoute);
+	// console.log("myDirection=" + myDirection);
+ 	selectRouteDirectionStops(route, direction);
+}
+
+// --------------------- RouteDirectionStops
+function selectRouteDirectionStops(route, direction) {
+	selectRouteDirectionStops2(route, direction, true);
+}
+
+function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
+	// if route direction stops are known, use them
+	if(Modernizr.localstorage) {
+		var p =  getDbValue("RouteDirectionStops." + route + "." + direction);
+		if(p != null) {
+			if(shouldCreateButtons) {
+				populateRouteDirectionStops(route, direction, p);
+			}
+			return;
+		}
+	}
+
+	var xmlhttp5 = new XMLHttpRequest();
+	var url5 = "http://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
+
+	xmlhttp5.onreadystatechange=function(shouldCreateButtons) {
+		if (xmlhttp5.readyState == 4 && xmlhttp5.status == 200) {
+			if(shouldCreateButtons) {
+				populateRouteDirectionStops(route, direction, xmlhttp5.responseText)
+			}
+			setDbValue("RouteDirectionStops." + route + "." + direction, xmlhttp5.responseText);
+		}
+	}
+	xmlhttp5.open("GET", url5, true);
+	xmlhttp5.send();
+}
+
+function populateRouteDirectionStops(route, direction, responseText) {
+	var arr = JSON.parse(responseText);
+    var i;
+	// var out = '<div id="routeDirectionStopButtonGroup" class="btn-group btn-group-sm" >';
+	var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
+    for(i = 0; i < arr.length; i++) {
+		// out += '<button type="button" class="btn btn-primary col-md-6 col-sm-4" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
+		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
+	}
+    out += "</div>";
+	// console.log("out=" + out);
+    document.getElementById("id00A").innerHTML = out;
+	document.getElementById("id00A").style.display = "block";
+	document.getElementById("separator").style.display = "block";
+}
+
+function routeDirectionStopClicked(route, direction, stop) {
+	myRoute = route;
+	myDirection = direction;
+	myStop = stop;
+	console.log("myRoute=" + myRoute);
+	console.log("myDirection=" + myDirection);
+	console.log("myStop=" + myStop);
+ 	getDepartures(route, direction, stop);
+}
+
+// --------------------- Departures
+function getDepartures(route, direction, stop) {
+	//  Sensitive to whether the stop has times scheduled
+
+	var xmlhttp6 = new XMLHttpRequest();
+	var url6 = "http://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
+	console.log("url6=" + url6);
+	
+	xmlhttp6.onreadystatechange=function() {
+		if (xmlhttp6.readyState == 4 && xmlhttp6.status == 200) {
+			populateDepartures(route, direction, stop, xmlhttp6.responseText)
+		}
+	}
+	xmlhttp6.open("GET", url6, true);
+	xmlhttp6.send();
+}
+
+function populateDepartures(route, direction, stop, responseText) {
+	var arr = JSON.parse(responseText);
+    var i;
+	var isValid = false;
+	var hasActuals = false;
+	var actualBlockNumber = 0;
+	
+	targetPoint = null;
+	var scheduledStop = getDbValue("Stop." + stop);
+	if(scheduledStop != null) {
+		targetPoint = JSON.parse(scheduledStop);
+	}
+	
+	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
+	var out = "<table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
+    for(i = 0; i < arr.length; i++) {
+		if(!isValid && arr[i] != null && arr[i].VehicleLatitude != null) {
+			isValid = true;
+		}
+		if(!hasActuals && arr[i].Actual != null && arr[i].Actual) {
+			hasActuals = true;
+			actualBlockNumber = arr[i].BlockNumber;
+		}
+
+		// copied from elsewhere
+		var milesAndDirectionLetter = "";
+		if(targetPoint != null && arr[i] != null && arr[i].VehicleLatitude != null && arr[i].VehicleLatitude != "0") {
+			var busAtPoint = {"latitude": arr[i].VehicleLatitude, "longitude": arr[i].VehicleLongitude};
+			var milesAway = miles(busAtPoint, targetPoint);	
+			milesAndDirectionLetter = milesAndDirection(milesAway);
+		}
+
+		out += '<tr class="table-row">' + 
+		((arr[i].Actual == null || !arr[i].Actual) ? '<td>' : '<td id="Actual_' + route + '_' + arr[i].BlockNumber + '" class="bg-success" >') + 
+		arr[i].Actual +
+		'</td><td>' +
+
+		arr[i].Route + arr[i].Terminal +
+		"</td><td>" +
+		arr[i].DepartureText +
+		"</td><td>" +
+		arr[i].Description +
+		"</td><td>" +
+		((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : passedMilestone(arr[i]).simple) +
+		"</td><td>" +
+		((milesAndDirectionLetter != "") ? milesAndDirectionLetter :(arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
+		"</td></tr>";
+    }
+    out += "</table>"
+	// console.log("out=" + out);
+	
+	if(isValid) {
+		// do not save until it is known to be a valid response
+		setDbValue("RouteDirectionStopDeparture." + route + "." + direction + "." + stop, responseText);
+		
+		// console.log("RouteDirectionStopDeparture." + route + "." + direction + "." + stop + "=" + responseText);
+		
+		var currentValue = getDbValue("RouteDirectionStopActive");
+		var newValue = "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}";
+		if(currentValue != null && currentValue == newValue) {
+			// dbValue already be set to this, so assume it's ok to remove the 00A section
+			document.getElementById("separator").style.display = "none";
+			document.getElementById("id00A").style.display = "none";
+		}
+		else {
+			setDbValue("RouteDirectionStopActive", newValue); // "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}");
+			rotateRecentRoutes();
+		}
+	}
+    document.getElementById("title1").innerHTML = "Bus Schedule " + route;
+    document.getElementById("id00B").innerHTML = out;
+	
+	// 1 South, 2 East, 3 West, 4 North
+	// console.log("direction=" + direction);
+	var directionAsString = ((direction == 1) ? "S" : (direction == 2) ? "E" : (direction == 3) ? "W" : (direction == 4) ? "N" : "?");
+	
+	// var outButton = "<div class=\"row\"><button type=\"button\" class=\"btn btn-primary col-md-6 col-sm-4\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString + " - " + stop + "</button></div>";
+	var outButton = "<button type=\"button\" class=\"btn btn-primary\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString + " - " + stop + "</button>";
+	
+	var timeOfQuery = new Date();
+	// outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toTimeString().toHHMMSS() + '</label>';
+	// outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.getTime().secondsToHms() + '</label>';
+	outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
+	
+    document.getElementById("id00C").innerHTML = outButton;
+	// document.getElementById("id00A").innerHTML = "&nbsp;";
+	
+	if(hasActuals) {
+		showBusLocation2(route, actualBlockNumber);
+	}
+}
+
+function getStopDescription(route, direction, stop) {
+	if(Modernizr.localstorage) {
+	
+//	var arr = JSON.parse(responseText);
+//    var i;
+//    for(i = 0; i < arr.length; i++) {
+//		console.log(arr[i]);
+//		if(arr[i].Route == route && arr[i].BlockNumber == blockNumber) {
+	
+		var p =  getDbValue("RouteDirectionStops." + route + "." + direction);
+		if(p != null) {
+			var stops = JSON.parse(p);
+			for(var i = 0; i < stops.length; i++) {
+				if(stops[i].Value == stop) {
+					return stops[i].Text;
+				}
+			}
+		}
+	}
+	return "";
+}
+
+
+
+function rotateRecentRoutes() {
+	// assumes that the new value RouteDirectionStopActive has been set
+	//   .0 is a copy of RouteDirectionStopActive
+	var recentValue = getDbValue("RouteDirectionStopActive.0");
+	if(recentValue == null) {
+		recentValue = getDbValue("RouteDirectionStopActive");
+		if(recentValue != null) {
+			setDbValue("RouteDirectionStopActive.0", recentValue);
+		}
+		return;
+	}
+	
+	var currentValue = getDbValue("RouteDirectionStopActive");
+	if(currentValue == null) {
+		return;   // something horrible happened!
+	}
+
+	// is it already in the list? if so, only need to replace up to that one
+	var isAlreadyInTheList = false;
+	for(i=0; i < 5; i++) {
+		recentValue = getDbValue("RouteDirectionStopActive." + i);
+		if(recentValue == null) { 
+			i = 999;
+		} else {
+			if(recentValue == currentValue) {
+				isAlreadyInTheList = true;
+				return;
+			}
+		}
+	}
+	console.log("isAlreadyInTheList=" + isAlreadyInTheList);
+	
+	if(recentValue == currentValue) { return; }
+	
+	for(i=4; i >= 0; i--) {
+		recentValue = getDbValue("RouteDirectionStopActive." + i);
+		if(recentValue != null) {
+			setDbValue("RouteDirectionStopActive." + (i + 1), recentValue);
+		}
+	}
+	recentValue = getDbValue("RouteDirectionStopActive");
+	if(recentValue != null) {
+		setDbValue("RouteDirectionStopActive.0", recentValue);
+	}
+	resetRecentButtons();
+}
+
+function resetRecentButtons() {
+	// spin through the 
+	for(i=0; i < 5; i++) {
+		recentValue = getDbValue("RouteDirectionStopActive." + i);
+		if(recentValue == null) {
+			document.getElementById("recent" + i).hidden = true;
+			document.getElementById("recent" + i).classList.add("hidden");
+		} else {
+			document.getElementById("recent" + i).hidden = false;
+			document.getElementById("recent" + i).classList.remove("hidden");
+			var recentStop = JSON.parse(recentValue);
+			var directionAsString = ((recentStop.direction == 1) ? "S" : (recentStop.direction == 2) ? "E" : (recentStop.direction == 3) ? "W" : (recentStop.direction == 4) ? "N" : "?");
+			
+			//	<li id="recent0" onclick="selectRecent(0);">&nbsp;</li>
+			var outListItem = recentStop.route + " - " + directionAsString + " - " + recentStop.stop;
+			document.getElementById("recent" + i).innerHTML = outListItem;			
+		}
+	}
+}
+
+function selectRecent(item) {
+	itemValue = getDbValue("RouteDirectionStopActive." + item);
+	if(itemValue != null) {
+		var itemStop = JSON.parse(itemValue);
+		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
+	}
+}
+
+function changeRoute(routeNumber) {
+	var radioButtonName = "radio" + routeNumber;
+	document.getElementById("radio14").checked = (radioButtonName == "radio14");
+	document.getElementById("radio133").checked = (radioButtonName == "radio133");
+	document.getElementById("radio7").checked = (radioButtonName == "radio7");
+
+	myRoute = routeNumber;
+    document.getElementById("title1").innerHTML = "Bus Schedule " + myRoute;	
+	
+	if(routeNumber == 14 && timeSince(route14QueriedAt)._seconds < 30) {
+		alert("30 seconds have not elapsed");
+		return;
+	}
+	if(routeNumber == 7 && timeSince(route7QueriedAt)._seconds < 30) {
+		alert("30 seconds have not elapsed");
+		return;
+	}
+	if(routeNumber == 133 && timeSince(route133QueriedAt)._seconds < 30) {
+		alert("30 seconds have not elapsed");
+		return;
+	}
+
+	var xmlhttp2 = new XMLHttpRequest();
+	var url2 = "http://svc.metrotransit.org/NexTrip/17884?format=json";
+	
+	if(routeNumber == 14) {
+		url2 = "http://svc.metrotransit.org/NexTrip/17884?format=json";
+	}
+	if(routeNumber == 133) {
+		url2 = "http://svc.metrotransit.org/NexTrip/53288?format=json";
+	}
+	if(routeNumber == 7) {
+		url2 = "http://svc.metrotransit.org/NexTrip/44062?format=json";
+	}
+
+	xmlhttp2.onreadystatechange=function() {
+		if (xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
+			var myArr = JSON.parse(xmlhttp2.responseText);
+			myFunction(myArr);
+		}
+	}
+	xmlhttp2.open("GET", url2, true);
+	xmlhttp2.send();
+
+    document.getElementById("id01").innerHTML = "<p>Waiting for data . . .</p>";
+}
+
+function myFunction(arr) {
+    // var arr = JSON.parse(response);
+    var i;
+    // var out = "<table border=\"1\"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Block</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th><th>Miles</th></tr>";
+	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Milestone</th><th>Miles</th></tr>";
+	var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
+
+	// alert("myFunction(arr)");
+	
+    for(i = 0; i < arr.length; i++) {
+		if(   (myRoute==14 && arr[i].Route=="14" && arr[i].Terminal != "E")
+		   || (myRoute==133 && arr[i].Route=="133")
+		   || (myRoute==7 && arr[i].Route=="7" && arr[i].Terminal == "E")   ) {
+		   
+// 		if(arr[i].Route=="14" && arr[i].Terminal != "E" ) {
+			out += "<tr><td>" +
+			arr[i].Actual +
+			"</td><td>" +
+			arr[i].Route + arr[i].Terminal +
+			"</td><td>" +
+			arr[i].DepartureText +
+			"</td><td>" +
+			arr[i].Description +
+//			"</td><td>" +
+//			arr[i].RouteDirection +
+//			"</td><td>" +
+//			((arr[i].BlockNumber == null) ? "&nbsp;" : arr[i].BlockNumber) +
+//			"</td><td>" +
+//			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : arr[i].VehicleLatitude + ", " + arr[i].VehicleLongitude ) +
+//			"</td><td>" +
+// capella tower
+//			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distance(arr[i].VehicleLatitude, arr[i].VehicleLongitude, 44.9763315, -93.268188) ) +
+			"</td><td>" +
+			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : passedMilestone(arr[i]).simple) +
+			"</td><td>" +
+			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
+			"</td></tr>";
+		}
+    }
+    out += "</table>"
+	out += "<pre>" + url + "</pre>";
+    document.getElementById("id01").innerHTML = out;
+
+	document.getElementById("id02").innerHTML = addResults(arr, myRoute);
+	
+	if(myRoute == 14) {
+		route14QueriedAt = new Date();
+		document.getElementById("querriedAt14").innerHTML = route14QueriedAt.toLocaleTimeString("en-US");
+	}
+	if(myRoute == 7) {
+		route7QueriedAt = new Date();
+		document.getElementById("querriedAt7").innerHTML = route7QueriedAt.toLocaleTimeString("en-US");;
+	}
+	if(myRoute == 133) {
+		route133QueriedAt = new Date();
+		document.getElementById("querriedAt133").innerHTML = route133QueriedAt.toLocaleTimeString("en-US");;
+	}
+	
+	if(myRoute == 7 || myRoute == 14 || myRoute == 133) {
+		// don't create another until "You are ready"
+		if (seconds_left == 30) {
+
+		if (typeof interval !== 'undefined') {
+			interval = null;
+		}
+
+		interval = setInterval(function() {
+				document.getElementById('timer_div').innerHTML = --seconds_left;
+
+				if (seconds_left <= 0)	{
+					document.getElementById('timer_div').innerHTML = 'You are ready';
+					clearInterval(interval);
+					seconds_left = 30;
+				}
+			}
+			, 1000);
+		}
+	}
+}
+
+function addResults(arr, myRoute) {
+    var i;
+    // var out = "<table border=\"1\"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Block</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th></tr>";
+    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th><th>Miles</th></tr>";
+	var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Milestone</th><th>Miles</th></tr>";
+
+	out += "<pre>" + (new Date()) + "</pre>";
+    out += "<table>"
+	       + "<tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th><th>Block Number</th>"
+	       + "<th>Gate</th><th>Location</th><th>Miles</th><th>Milestone</th><th>MilesAsString</th></tr>";
+
+    for(i = 0; i < arr.length; i++) {
+		var milesFrom = null;
+		if(!(arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0")) {
+			var point = {latitude:arr[i].VehicleLatitude, longitude:arr[i].VehicleLongitude};
+			var wayPoint = busStopWayPoint(arr[i]);
+
+			if(wayPoint != null) {
+				milesFrom = miles(point, wayPoint);
+			}
+		}
+		out += "<tr><td>" +
+			arr[i].Actual +
+			"</td><td>" +
+			arr[i].Route + arr[i].Terminal +
+			"</td><td>" +
+			arr[i].DepartureText +
+			"</td><td>" +
+			arr[i].Description +
+			"</td><td>" +
+			arr[i].RouteDirection +
+			"</td><td>" +
+			((arr[i].BlockNumber == null) ? "&nbsp;" : arr[i].BlockNumber) +
+			"</td><td>" +
+			((arr[i].Gate == null) ? "&nbsp;" : arr[i].Gate) +
+			"</td><td>" +
+			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : arr[i].VehicleLatitude + ", " + arr[i].VehicleLongitude ) +
+			"</td><td>" +
+			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
+			"</td><td>" +
+			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : passedMilestone(arr[i]).detail) +
+			"</td><td>" +
+			((milesFrom == null) ? "&nbsp;" : milesAsString(milesFrom)) +
+			"</td></tr>";
+    }
+    out += "</table>"
+    return out + document.getElementById("id02").innerHTML;
+}
+
+
+// Where a = line point 1; b = line point 2; c = point to check against.
+//public bool isLeft(Point a, Point b, Point c){
+//     return ((b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x)) > 0;
+//}
+
+// claim is that this is slightly better
+//     return (b.x - a.x)*(c.y - a.y) > (b.y - a.y)*(c.x - a.x);
+
+function isLeftOfLine(pointAOnLine, pointBOnLine, pointC) {
+	return (pointBOnLine.longitude - pointAOnLine.longitude)*(pointC.latitude - pointAOnLine.latitude) > (pointBOnLine.latitude - pointAOnLine.latitude)*(pointC.longitude - pointAOnLine.longitude);
+}
+
+function distance(latitude1, longitude1, latitude2, longitude2) {
+	return Math.sqrt(Math.pow(latitude1 - latitude2, 2) + Math.pow(longitude1 - longitude2, 2));
+}
+
+function latitudeDelta(point, wayPoint) {
+	return (point.latitude - wayPoint.latitude) * 69.0539;    // includes near 45deg factor
+}
+function longitudeDelta(point, wayPoint) {
+	return (point.longitude - wayPoint.longitude) * 48.9930;    // includes near 45deg factor for longitude
+}
+
+function distanceNearLatitude45(point, wayPoint) {
+	var latitudeDiff = latitudeDelta(point, wayPoint);
+	var longitudeDiff = longitudeDelta(point, wayPoint);
+	return Math.sqrt(Math.pow(latitudeDiff, 2) + Math.pow(longitudeDiff, 2));
+}
+
+function distanceInMiles3Digits(arrRow) {
+	var strMiles = "" + distanceInMiles(arrRow);
+	return strMiles.substr(0, 4);
+}
+
+function busStopWayPoint(arrRow) {
+	if(arrRow.Route=="133") {
+		return Marquette400S;  //400 S Marquette
+	}
+	if(arrRow.Route=="7") {
+		return FourthStreet215S;   //215 S 4th St - #7    FourthStreet215S
+	}
+	if(arrRow.Route=="14") {
+		return SixthStreet201S;  //Capella Tower
+	}
+	return null;
+}
+
+function distanceInMiles(arrRow) {
+	var busAtPoint = {latitude:arrRow.VehicleLatitude, longitude:arrRow.VehicleLongitude};
+	if(typeof targetPoint !== 'undefined') {
+		if(targetPoint != null) {
+			return distanceNearLatitude45(busAtPoint, targetPoint); 
+		}
+	} 
+	
+	if(arrRow.Route=="133") {
+		return distanceNearLatitude45(busAtPoint, Marquette400S);  //400 S Marquette
+	}
+	if(arrRow.Route=="7") {
+		return distanceNearLatitude45(busAtPoint, FourthStreet215S);   //215 S 4th St - #7    FourthStreet215S
+	}
+	if(arrRow.Route=="14") {
+		return distanceNearLatitude45(busAtPoint, SixthStreet201S);  //Capella Tower
+	}
+	return "";
+}
+
+function miles(aPoint, aWayPoint) {
+	var obj = {};
+	obj.point = aPoint;
+	obj.wayPoint = aWayPoint;
+	obj.between = distanceNearLatitude45(aPoint, aWayPoint);
+	obj.north = latitudeDelta(aPoint, aWayPoint);
+	obj.east  = longitudeDelta(aPoint, aWayPoint);
+	obj.isNorthOf = obj.north > 0.01;
+	obj.isSouthOf = obj.north < 0.01;
+	obj.isEastOf = obj.east > 0.01;        // longitude increases as you go east
+	obj.isWestOf = obj.east < 0.01;
+
+	// angle in degrees
+	obj.angleInDegrees = Math.atan2(aPoint.longitude - aWayPoint.longitude, aPoint.latitude - aWayPoint.latitude) * 180 / Math.PI;
+
+	return obj;
+}
+
+function milesAsString_v1(miles) {
+	if(miles == null) return;
+	
+	return "(" + miles.point.latitude.toFixed(6) + ", " + miles.point.longitude.toFixed(6) + ") vs ("  + miles.wayPoint.latitude.toFixed(6) + ", " + miles.wayPoint.longitude.toFixed(6) + ")"
+		+ " .between=" + miles.between.toFixed(2) + " miles, .north=" + miles.north.toFixed(2) + ", .east=" + miles.east.toFixed(2) 
+		+ ", .isNorthOf:" + miles.isNorthOf + ", .isSouthOf:" + miles.isSouthOf 
+		+ ", .isWestOf:" + miles.isWestOf + ", .isEastOf:" + miles.isEastOf; 
+}
+
+function milesAsString(miles) {
+	if(miles == null) return;
+	
+	return "(" + miles.point.latitude.toFixed(6) + ", " + miles.point.longitude.toFixed(6) + ") vs ("  + miles.wayPoint.latitude.toFixed(6) + ", " + miles.wayPoint.longitude.toFixed(6) + ")"
+		+ " .between=" + miles.between.toFixed(2) + " miles, .north=" + miles.north.toFixed(2) + ", .east=" + miles.east.toFixed(2) 
+		+ ", " + (miles.isNorthOf ? "N" : (miles.isSouthOf) ? "S" : "")  
+		+ ", " + (miles.isEastOf ? "E" : (miles.isWestOf) ? "W" : "") 
+		;
+}
+
+function milesAndDirection(miles) {
+	if(miles == null) return;
+
+	if( 180.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  180.0 + 11.25) { return miles.between.toFixed(2) + " S"; }
+	if(-180.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees < -180.0 + 11.25) { return miles.between.toFixed(2) + " S"; }
+	if(-157.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees < -157.5 + 11.25) { return miles.between.toFixed(2) + " SSW"; }
+	if(-135.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees < -135.0 + 11.25) { return miles.between.toFixed(2) + " SW"; }
+	if(-112.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees < -112.5 + 11.25) { return miles.between.toFixed(2) + " WSW"; }
+	if( -90.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  -90.0 + 11.25) { return miles.between.toFixed(2) + " W"; }
+	if( -67.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  -67.5 + 11.25) { return miles.between.toFixed(2) + " WNW"; }
+	if( -45.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  -45.0 + 11.25) { return miles.between.toFixed(2) + " NW"; }
+	if( -22.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  -22.5 + 11.25) { return miles.between.toFixed(2) + " NNW"; }
+	if(   0.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <    0.0 + 11.25) { return miles.between.toFixed(2) + " N"; }
+	if(  22.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <   22.5 + 11.25) { return miles.between.toFixed(2) + " NNE"; }
+	if(  45.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <   45.0 + 11.25) { return miles.between.toFixed(2) + " NE"; }
+	if(  67.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <   67.5 + 11.25) { return miles.between.toFixed(2) + " ENE"; }
+	if(  90.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <   90.0 + 11.25) { return miles.between.toFixed(2) + " E"; }
+	if( 112.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  112.5 + 11.25) { return miles.between.toFixed(2) + " ESE"; }
+	if( 135.0 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  135.0 + 11.25) { return miles.between.toFixed(2) + " SE"; }
+	if( 157.5 - 11.25 < miles.angleInDegrees && miles.angleInDegrees <  157.5 + 11.25) { return miles.between.toFixed(2) + " SSE"; }
+	
+	if(miles.isNorthOf && (Math.abs(miles.north) > Math.abs(miles.east) * 2.0)) {
+		// more north than northwest or northeast
+		return miles.between.toFixed(2) + " Nx";
+	}
+		
+	if(miles.isSouthOf && (Math.abs(miles.north) > Math.abs(miles.east) * 2.0)) {
+		return miles.between.toFixed(2) + " Sx";
+	}
+
+	if(miles.isEastOf && (Math.abs(miles.east) > Math.abs(miles.north) * 2.0)) {
+		return miles.between.toFixed(2) + " Ex";
+	}
+
+	if(miles.isWestOf && (Math.abs(miles.east) > Math.abs(miles.north) * 2.0)) {
+		return miles.between.toFixed(2) + " Wx";
+	}
+
+	if(miles.isNorthOf && miles.isWestOf) {
+		return miles.between.toFixed(2) + " NWx";
+	}
+
+	if(miles.isNorthOf && miles.isEastOf) {
+		return miles.between.toFixed(2) + " NEx";
+	}
+
+	if(miles.isSouthOf && miles.isEastOf) {
+		return miles.between.toFixed(2) + " SEx";
+	}
+
+	if(miles.isSouthOf && miles.isWestOf) {
+		return miles.between.toFixed(2) + " SWx";
+	}
+
+	if(miles == null || miles.between == null) {
+		return "n/a";
+	}
+
+	return miles.between.toFixed(2) + " ??";
+}
+
+function isNorthAndEastOf(miles, between) {
+	return miles.isNorthOf && miles.isEastOf && miles.between <= between;
+}
+
+// change to return an object that has {detail: string, simple: string}
+function passedMilestone(arrRow) {
+	var busAtPoint = {latitude:arrRow.VehicleLatitude, longitude:arrRow.VehicleLongitude};
+	
+	if(arrRow.Route=="133") {
+		// false	133	4:15	Ltd Stop/Bloomington/Chicago Av	SOUTHBOUND	1420	A	44.975585, -93.264102	0.32	35W & Franklin	(44.975585, -93.264102) vs (44.979001, -93.268623) .between=0.32 miles, .north=-0.24, .east=0.22, isSouthOf, isEastOf
+		// true	133	14 Min	Ltd Stop/Bloomington/Chicago Av	SOUTHBOUND	1824	A	44.97874, -93.26189	0.33	Start of run (Gateway Ramp)	(44.978740, -93.261890) vs (44.979001, -93.268623) .between=0.33 miles, .north=-0.02, .east=0.33, isSouthOf, isEastOf
+		
+		var milesSWofWashington300S = miles(busAtPoint, SWofWashington300S);
+		if(isNorthAndEastOf(milesSWofWashington300S, 0.2)) {
+			return {detail: "NE of 3rd and Washington" + " :" + milesAsString(milesSWofWashington300S),
+			        simple: milesAndDirection(milesSWofWashington300S) + " of 3rd &amp; Wash"};
+		}
+
+		var milesSouthAndWestOfGatewayRamp = miles(busAtPoint, SouthAndWestOfGatewayRamp);
+		if(milesSouthAndWestOfGatewayRamp.isNorthOf && milesSouthAndWestOfGatewayRamp.isEastOf && milesSouthAndWestOfGatewayRamp.between < 0.15) {
+//			alert("milesSouthAndWestOfGatewayRamp=" + milesAsString(milesSouthAndWestOfGatewayRamp) + "   Start of run (Gateway Ramp)");
+			return {detail: "Start of run (Gateway Ramp)" + milesAsString(milesSouthAndWestOfGatewayRamp),
+			        simple: milesAndDirection(milesSouthAndWestOfGatewayRamp) + " start of run"};
+		}
+		
+		var milesWashington300S = miles(busAtPoint, Washington300S);
+		if(milesWashington300S.isNorthOf && milesWashington300S.isEastOf && milesWashington300S.between < 0.2) {
+//			alert("milesWashington300S=" + milesAsString(milesWashington300S) + "   East of 3rd and Washington");
+			return {detail: "East of 3rd and Washington" + milesAsString(milesWashington300S),
+					simple: milesAndDirection(milesWashington300S) + " of 3rd &amp; Wash"};
+		}
+		if(milesWashington300S.isNorthOf && milesWashington300S.isWestOf && milesWashington300S.between < 0.2) {
+//			alert("milesWashington300S=" + milesAsString(milesWashington300S) + "   Crossed 3rd and Washington");
+			return {detail: "Crossed 3rd and Washington" + milesAsString(milesWashington300S),
+					simple: milesAndDirection(milesWashington300S) + " crossed 3rd &amp; Wash"};
+		}
+		
+		var milesGrantAnd35W = miles(busAtPoint, GrantAnd35W);
+		if(milesGrantAnd35W.isSouthOf) {
+			return {detail: "Still south of downtown" + milesAsString(milesGrantAnd35W),
+					simple: milesAndDirection(milesGrantAnd35W) + " of downtown"};
+		}
+		if(milesGrantAnd35W.east < -1.0) {
+			return {detail: "West of downtown" + milesAsString(milesGrantAnd35W),
+					simple: milesAndDirection(milesGrantAnd35W) + " of downtown"};
+		}
+		
+		var miles400SMarquette = miles(busAtPoint, Marquette400S);
+
+		var distanceFrom400SMarquette = distance(arrRow.VehicleLatitude, arrRow.VehicleLongitude, Marquette400S.latitude, Marquette400S.longitude);
+		var distanceFrom5thAndWashington = distance(arrRow.VehicleLatitude, arrRow.VehicleLongitude, Washington500N.latitude, Washington500N.longitude);
+		if(distanceFrom400SMarquette <= 0.0001) {
+			return {detail: "here", 
+					simple: milesAndDirection(miles400SMarquette) + " from Stop"};
+			}
+		if(distanceFrom400SMarquette <= 0.0169) {
+			return {detail: "35W &amp; Franklin",
+					simple: milesAndDirection(miles400SMarquette) + " near 35W &amp Franklin"};
+		}
+		if(distanceFrom400SMarquette <= 1 && distanceFrom5thAndWashington <= 0.2) {
+			return {detail: "Turning to head south", 
+					simple: milesAndDirection(miles400SMarquette) + " turning to head south"};
+		}
+		else {
+			return {detail: "outside downtown, " + milesAsString(miles400SMarquette),
+					simple: milesAndDirection(miles400SMarquette) + "outside downtown"};
+		}
+	}
+	if(arrRow.Route=="14") {
+		var milesAway = miles(busAtPoint, SixthStreet201S);
+		
+		var milesBroadwayEmerson = miles(busAtPoint, BroadwayEmerson);
+		if(milesBroadwayEmerson.isWestOf) {
+			return {detail: "West of Broadway Emerson" + " :" + milesAsString(milesBroadwayEmerson),
+					simple: milesAndDirection(milesBroadwayEmerson) + " of Broadway &amp; Emerson"};
+		}
+
+		var milesPlymouthWashington = miles(busAtPoint, PlymouthWashington);
+		if(milesPlymouthWashington.east < 0.1 && milesPlymouthWashington.north > -0.1 ) {
+			return {detail: "West of Plymouth and Washington" + " :" + milesAsString(milesPlymouthWashington), 
+					simple: milesAndDirection(milesPlymouthWashington) + " of Plymouth &amp; Wash"};
+		}
+
+		var milesWashington300N = miles(busAtPoint, Washington300N);
+		if(milesWashington300N.isWestOf && milesWashington300N.isNorthOf && milesWashington300N.between < 1) {
+			return {detail: "NW of 3rd Ave N and Washington" + " :" + milesAsString(milesWashington300N),
+					simple: milesAndDirection(milesWashington300N) + " of 3rd Ave N &amp; Wash"};
+		}
+		
+		var milesFifthStBusRamp = miles(busAtPoint, FifthStBusRamp);
+		if(milesFifthStBusRamp.isNorthOf && milesFifthStBusRamp.north < 0.2) {
+			return {detail: "At 5th Street Bus Ramp" + " :" + milesAsString(milesFifthStBusRamp), 
+					simple: milesAndDirection(milesFifthStBusRamp) + " of 5th St Bus Ramp"};
+		}
+		
+		var milesFromSixthNicollet = miles(busAtPoint, SixthNicollet);
+		if(milesFifthStBusRamp.isSouthOf && milesFifthStBusRamp.isEastOf && milesFromSixthNicollet.isNorthOf && milesFromSixthNicollet.isWestOf && milesFromSixthNicollet.between > 0.05) {
+			return {detail: "Nearing Nicollet Mall" + " :" + milesAsString(milesFromSixthNicollet),
+					simple: milesAndDirection(milesFromSixthNicollet) + " of 6th &amp; Nicollet"};
+		}			
+
+		if(milesFromSixthNicollet.isNorthOf && milesFromSixthNicollet.between < 0.05) {
+			return {detail: "At Nicollet Mall" + " :" + milesAsString(milesFromSixthNicollet),
+					simple: milesAndDirection(milesFromSixthNicollet) + " Nicollet Mall"};
+		}			
+				
+		if(Math.abs(milesAway.between) < 0.0001) {
+			return {detail: "here",
+					simple: milesAndDirection(milesAway) + " of Capella"};
+ 		}
+		if(milesAway.isNorthOf && milesAway.isWestOf && Math.abs(milesAway.between) <= 0.0041) {
+			return {detail: "Nicollet Mall",
+					simple: milesAndDirection(milesAway) + " of Capella"};
+ 		}
+		
+		return {detail: "todo - " + milesAsString(milesAway),
+				simple: milesAndDirection(milesAway) + " of Capella"};
+	}
+	if(arrRow.Route=="7") {
+		var milesFrom215s4thSt = miles(busAtPoint, FourthStreet215S);
+
+		if(Math.abs(milesFrom215s4thSt.between) < 0.0001) {
+			return {detail: "here",
+					simple: milesAndDirection(milesFrom215s4thSt) + " at the Stop"};
+ 		}
+
+		return {detail: "todo - " + milesAsString(milesFrom215s4thSt),
+				simple: milesAndDirection(milesFrom215s4thSt) + " of 215 S 4th"};
+
+	}
+	return {detail: "Route not implemented.",
+			simple: "n/a"};
+}
+	
+function timeSince(when) { // this ignores months
+	var obj = {};
+	obj._milliseconds = (new Date()).valueOf() - when.valueOf();
+	obj.milliseconds = obj._milliseconds % 1000;
+	obj._seconds = (obj._milliseconds - obj.milliseconds) / 1000;
+	obj.seconds = obj._seconds % 60;
+	obj._minutes = (obj._seconds - obj.seconds) / 60;
+	obj.minutes = obj._minutes % 60;
+	obj._hours = (obj._minutes - obj.minutes) / 60;
+	obj.hours = obj._hours % 24;
+	obj._days = (obj._hours - obj.hours) / 24;
+	obj.days = obj._days % 365;
+	obj.years = (obj._days - obj.days) / 365;
+	return obj;
+}
+
+var seconds_left = 30;
+
+function setCookie(cname, cvalue) {
+    var d = new Date();
+	var exdays = 30;  // save for 30 days
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    var expires = "expires="+d.toUTCString();
+    document.cookie = cname + "=" + cvalue + "; " + expires;
+} 
+
+var startingFrom;
+
+function checkCookieStartingFrom() {
+    startingFrom=getCookie("startingFrom");
+    if (startingFrom!="") {
+        document.getElementById("startingFrom").innerHTML = startingFrom;
+    }else{
+        startingFrom = prompt("Starting from:", "");
+        if (startingFrom != "" && startingFrom != null) {
+            setCookie("startingFrom", startingFrom);
+        }
+    }
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1);
+        if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+    }
+    return "";
+}
+// -------------------------------- local storage -- start
+
+// see http://diveintohtml5.info/storage.html
+
+function supports_html5_storage() {
+  try {
+    return 'localStorage' in window && window['localStorage'] !== null;
+  } catch (e) {
+    return false;
+  }
+}
+
+function setDbValue(name, setting) {
+    if (!supports_html5_storage()) { return false; }
+    localStorage["BusSchedule." + name] = setting;
+	return true;
+}
+function getDbValue(name) {
+    if (!supports_html5_storage()) { return null; }
+    return localStorage["BusSchedule." + name];
+}
+
+function getDbSize() {
+	if (localStorage && !localStorage.getItem('size')) {
+		var i = 0;
+		try {
+			// Test up to 10 MB
+			for (i = 250; i <= 10000; i += 250) {
+				localStorage.setItem('test', new Array((i * 1024) + 1).join('a'));
+			}
+		} catch (e) {
+			localStorage.removeItem('test');
+			localStorage.setItem('size', i - 250);            
+		}
+	}
+	if (localStorage) {
+		return localStorage.getItem('size');
+	}
+}
+
+function resetDatabase() {
+    if (!supports_html5_storage()) { return null; }
+	localStorage.clear();
+}
+
+function showDatabase() {
+	// show SQL that could be used in a query for Stop names of a route
+    // BusSchedule.RouteDirectionStops.133.1	[{"Text":"Gateway Ramp ","Value":"GTWY"},{"Text":"Marquette Ave and 4th St ","Value":"MA4S"},{"Text":"Marquette Ave and 8th St ","Value":"MA8S"},{"Text":"12th St and 3rd Ave ","Value":"123A"},{"Text":"I-35W and Lake St","Value":"I3LA"},{"Text":"38th St and Chicago Ave","Value":"38CH"},{"Text":"Chicago Ave and 46th St","Value":"46CH"},{"Text":"54th St and Bloomington Ave","Value":"BL54"},{"Text":"1000 46th St E ","Value":"1046"}]	
+    // BusSchedule.RouteDirectionStops.133.4	[{"Text":"1000 46th St E ","Value":"1046"},{"Text":"Bloomington Ave and 54th St","Value":"BL54"},{"Text":"Chicago Ave and 46th St","Value":"46CH"},{"Text":"38th St and Chicago Ave","Value":"38CH"},{"Text":"2nd Ave and 11th St ","Value":"112A"},{"Text":"2nd Ave and 7th St ","Value":"7S2A"},{"Text":"2nd Ave and Washington Ave ","Value":"WA2A"}]	
+    if (!supports_html5_storage()) { return null; }
+
+	var routeDirectionCount = 0;
+	for(var i=0, len = localStorage.length; i < len; ++i){
+		if(localStorage.key(i).substring(0, "BusSchedule.RouteDirectionStops.".length) == "BusSchedule.RouteDirectionStops.") {
+			if(++routeDirectionCount < 9999) { // 14, 30, 45, 64, 77, 93, 111
+				console.log("routeDirectionCount=" + routeDirectionCount);
+				var rawValues = localStorage.getItem(localStorage.key(i));
+				var values = JSON.parse(rawValues);
+				for(var j=0, valuesLength = values.length; j < valuesLength; ++j) {
+					var value = values[j];
+					console.log("('" + localStorage.key(i).substring("BusSchedule.RouteDirectionStops.".length) + "', '" + value.Text + "', '" + value.Value + "', " + j + "), "); 
+				}
+			}
+		}
+	}
+}
+
+function visitAllRoutes() {
+	// to populate the local database with values that showDatabase() can use.
+    if (!supports_html5_storage()) { 
+		return; 
+	}
+	
+	var rawRoutes = getDbValue("Routes");
+	if(rawRoutes == null) { return; }
+	
+	var arrRoutes = JSON.parse(rawRoutes);
+	for(i = 0; i < arrRoutes.length; i++) {
+		// need to determine the valid directions for each route
+		var route = arrRoutes[i].Route;
+		// is there a function to call that does not create/update a button?
+		var shouldCreateButton = false;
+		selectRouteDirections2(route, shouldCreateButton);
+	}
+	
+	// now, go through the RouteDirections
+	for(var i=0, len = localStorage.length; i < len; ++i){
+		if(localStorage.key(i).substring(0, "BusSchedule.RouteDirections.".length) == "BusSchedule.RouteDirections.") {
+			var rawValues = localStorage.getItem(localStorage.key(i));
+			var values = JSON.parse(rawValues);
+			for(var j=0, valuesLength = values.length; j < valuesLength; ++j) {
+				var direction = values[j].Value;
+				var route = localStorage.key(i).substring("BusSchedule.RouteDirections.".length);
+				selectRouteDirectionStops2(route, direction, false);
+			}
+		}
+	}
+}
+
+// console.log("localStorage size=" + getDbSize());	
+	
+var testStopExists = getDbValue("Stop.11SM");
+if((testStopExists == null) && supports_html5_storage()) {
+	setDbValue("Stop.101B","{\"latitude\":45.1378,\"longitude\":-93.4133}");
+	setDbValue("Stop.101W","{\"latitude\":45.1117,\"longitude\":-93.5118}");
+	setDbValue("Stop.1022","{\"latitude\":44.819,\"longitude\":-93.2754}");
+	setDbValue("Stop.102A","{\"latitude\":44.9728,\"longitude\":-93.2718}");
+	setDbValue("Stop.109J","{\"latitude\":45.1681,\"longitude\":-93.2557}");
+	setDbValue("Stop.109N","{\"latitude\":45.152,\"longitude\":-93.407}");
+	setDbValue("Stop.10BL","{\"latitude\":44.8154,\"longitude\":-93.2942}");
+	setDbValue("Stop.10BR","{\"latitude\":44.811,\"longitude\":-93.3609}");
+	setDbValue("Stop.10FR","{\"latitude\":44.8192,\"longitude\":-93.3295}");
+	setDbValue("Stop.10HA","{\"latitude\":44.9632,\"longitude\":-92.9643}");
+	setDbValue("Stop.10ME","{\"latitude\":45.0239,\"longitude\":-93.5072}");
+	setDbValue("Stop.10NA","{\"latitude\":44.9895,\"longitude\":-93.4055}");
+	setDbValue("Stop.10WB","{\"latitude\":44.95,\"longitude\":-93.0985}");
+	setDbValue("Stop.110","{\"latitude\":44.8835,\"longitude\":-93.1468}");
+	setDbValue("Stop.110H","{\"latitude\":44.8035,\"longitude\":-93.3688}");
+	setDbValue("Stop.1115","{\"latitude\":44.968,\"longitude\":-93.2582}");
+	setDbValue("Stop.112A","{\"latitude\":44.972,\"longitude\":-93.2725}");
+	setDbValue("Stop.117J","{\"latitude\":45.1827,\"longitude\":-93.2562}");
+	setDbValue("Stop.119R","{\"latitude\":45.1866,\"longitude\":-93.3631}");
+	setDbValue("Stop.11HA","{\"latitude\":44.9742,\"longitude\":-93.2782}");
+	setDbValue("Stop.11MA","{\"latitude\":44.9724,\"longitude\":-93.2745}");
+	setDbValue("Stop.11SM","{\"latitude\":44.9062,\"longitude\":-93.4138}");
+	setDbValue("Stop.11WH","{\"latitude\":45.0156,\"longitude\":-93.0198}");
+	setDbValue("Stop.11WR","{\"latitude\":45.1665,\"longitude\":-93.3569}");
+	setDbValue("Stop.123A","{\"latitude\":44.9704,\"longitude\":-93.2727}");
+	setDbValue("Stop.1277","{\"latitude\":44.8637,\"longitude\":-93.258}");
+	setDbValue("Stop.1282","{\"latitude\":44.8552,\"longitude\":-93.258}");
+	setDbValue("Stop.12HA","{\"latitude\":45.1901,\"longitude\":-93.3091}");
+	setDbValue("Stop.12HE","{\"latitude\":44.9745,\"longitude\":-93.2802}");
+	setDbValue("Stop.12SO","{\"latitude\":44.889,\"longitude\":-93.0488}");
+	setDbValue("Stop.1316","{\"latitude\":44.993,\"longitude\":-93.4017}");
+	setDbValue("Stop.14JA","{\"latitude\":44.9553,\"longitude\":-93.0963}");
+	setDbValue("Stop.15HA","{\"latitude\":44.9704,\"longitude\":-92.9646}");
+	setDbValue("Stop.15UN","{\"latitude\":44.979,\"longitude\":-93.2353}");
+	setDbValue("Stop.16CO","{\"latitude\":44.9677,\"longitude\":-93.3517}");
+	setDbValue("Stop.17MA","{\"latitude\":44.9243,\"longitude\":-93.4215}");
+	setDbValue("Stop.19AV","{\"latitude\":44.9015,\"longitude\":-93.0578}");
+	setDbValue("Stop.1ALA","{\"latitude\":44.9481,\"longitude\":-93.2766}");
+	setDbValue("Stop.1S1A","{\"latitude\":44.9367,\"longitude\":-93.2909}");
+	setDbValue("Stop.1S2A","{\"latitude\":44.9712,\"longitude\":-93.2835}");
+	setDbValue("Stop.1SCN","{\"latitude\":45.1171,\"longitude\":-93.4022}");
+	setDbValue("Stop.22HE","{\"latitude\":44.9614,\"longitude\":-93.2925}");
+	setDbValue("Stop.24CE","{\"latitude\":44.959,\"longitude\":-93.2473}");
+	setDbValue("Stop.24LY","{\"latitude\":44.9591,\"longitude\":-93.288}");
+	setDbValue("Stop.24ME","{\"latitude\":45.0192,\"longitude\":-93.4958}");
+	setDbValue("Stop.24SH","{\"latitude\":44.9592,\"longitude\":-93.3132}");
+	setDbValue("Stop.25RV","{\"latitude\":44.9654,\"longitude\":-93.2359}");
+	setDbValue("Stop.26CH","{\"latitude\":44.9556,\"longitude\":-93.2629}");
+	setDbValue("Stop.2725","{\"latitude\":44.9574,\"longitude\":-93.2331}");
+	setDbValue("Stop.27UN","{\"latitude\":44.9725,\"longitude\":-93.2185}");
+	setDbValue("Stop.27WA","{\"latitude\":45.0168,\"longitude\":-93.2573}");
+	setDbValue("Stop.28CH","{\"latitude\":44.9519,\"longitude\":-93.2628}");
+	setDbValue("Stop.29GR","{\"latitude\":45.0205,\"longitude\":-93.2702}");
+	setDbValue("Stop.2A6S","{\"latitude\":44.9767,\"longitude\":-93.2686}");
+	setDbValue("Stop.2S1A","{\"latitude\":44.9842,\"longitude\":-93.2696}");
+	setDbValue("Stop.2S2A","{\"latitude\":44.985,\"longitude\":-93.2694}");
+	setDbValue("Stop.2S2S","{\"latitude\":44.9926,\"longitude\":-93.3051}");
+	setDbValue("Stop.2S3A","{\"latitude\":44.9757,\"longitude\":-93.2681}");
+	setDbValue("Stop.31IR","{\"latitude\":44.9465,\"longitude\":-93.3017}");
+	setDbValue("Stop.32NI","{\"latitude\":44.9449,\"longitude\":-93.2779}");
+	setDbValue("Stop.32WI","{\"latitude\":45.0146,\"longitude\":-93.3802}");
+	setDbValue("Stop.33FM","{\"latitude\":45.0145,\"longitude\":-93.2955}");
+	setDbValue("Stop.33LB","{\"latitude\":44.9436,\"longitude\":-93.3681}");
+	setDbValue("Stop.33ST","{\"latitude\":45.0277,\"longitude\":-93.2268}");
+	setDbValue("Stop.34HA","{\"latitude\":45.0185,\"longitude\":-93.4636}");
+	setDbValue("Stop.36AQ","{\"latitude\":44.9387,\"longitude\":-93.3896}");
+	setDbValue("Stop.36BN","{\"latitude\":45.0219,\"longitude\":-93.3904}");
+	setDbValue("Stop.36FR","{\"latitude\":45.0203,\"longitude\":-93.3286}");
+	setDbValue("Stop.36HE","{\"latitude\":44.9378,\"longitude\":-93.2981}");
+	setDbValue("Stop.36LA","{\"latitude\":44.9484,\"longitude\":-93.2204}");
+	setDbValue("Stop.36LN","{\"latitude\":45.0222,\"longitude\":-93.4028}");
+	setDbValue("Stop.36LO","{\"latitude\":45.0218,\"longitude\":-93.3702}");
+	setDbValue("Stop.36NB","{\"latitude\":45.0206,\"longitude\":-93.3388}");
+	setDbValue("Stop.36PC","{\"latitude\":44.9379,\"longitude\":-93.3459}");
+	setDbValue("Stop.36WO","{\"latitude\":44.9378,\"longitude\":-93.3548}");
+	setDbValue("Stop.36YO","{\"latitude\":45.0205,\"longitude\":-93.3195}");
+	setDbValue("Stop.3737","{\"latitude\":45.0357,\"longitude\":-93.2256}");
+	setDbValue("Stop.37SV","{\"latitude\":45.0357,\"longitude\":-93.2183}");
+	setDbValue("Stop.37UV","{\"latitude\":45.0356,\"longitude\":-93.2627}");
+	setDbValue("Stop.3842","{\"latitude\":44.9343,\"longitude\":-93.2128}");
+	setDbValue("Stop.384A","{\"latitude\":44.9342,\"longitude\":-93.2701}");
+	setDbValue("Stop.38BL","{\"latitude\":44.9341,\"longitude\":-93.2523}");
+	setDbValue("Stop.38BR","{\"latitude\":44.934,\"longitude\":-93.2907}");
+	setDbValue("Stop.38CE","{\"latitude\":44.9341,\"longitude\":-93.2473}");
+	setDbValue("Stop.38CH","{\"latitude\":44.9342,\"longitude\":-93.2627}");
+	setDbValue("Stop.38GR","{\"latitude\":44.9341,\"longitude\":-93.2844}");
+	setDbValue("Stop.38MH","{\"latitude\":44.9342,\"longitude\":-93.2239}");
+	setDbValue("Stop.38NI","{\"latitude\":44.9341,\"longitude\":-93.2779}");
+	setDbValue("Stop.39SH","{\"latitude\":44.9323,\"longitude\":-93.313}");
+	setDbValue("Stop.3A10","{\"latitude\":44.9722,\"longitude\":-93.2707}");
+	setDbValue("Stop.3A16","{\"latitude\":44.9673,\"longitude\":-93.2721}");
+	setDbValue("Stop.3A7S","{\"latitude\":44.9677,\"longitude\":-93.2819}");
+	setDbValue("Stop.3AFR","{\"latitude\":44.9629,\"longitude\":-93.2727}");
+	setDbValue("Stop.3AVM","{\"latitude\":45.198,\"longitude\":-93.3872}");
+	setDbValue("Stop.3MAR","{\"latitude\":44.9551,\"longitude\":-93.0705}");
+	setDbValue("Stop.3PUL","{\"latitude\":44.8367,\"longitude\":-92.9978}");
+	setDbValue("Stop.3S4A","{\"latitude\":44.8937,\"longitude\":-93.0385}");
+	setDbValue("Stop.3SHE","{\"latitude\":44.9813,\"longitude\":-93.27}");
+	setDbValue("Stop.3SNI","{\"latitude\":44.9807,\"longitude\":-93.2687}");
+	setDbValue("Stop.3SWB","{\"latitude\":44.9568,\"longitude\":-93.0255}");
+	setDbValue("Stop.4228","{\"latitude\":44.9269,\"longitude\":-93.2321}");
+	setDbValue("Stop.42DO","{\"latitude\":45.0325,\"longitude\":-93.36}");
+	setDbValue("Stop.42LY","{\"latitude\":45.0309,\"longitude\":-93.2881}");
+	setDbValue("Stop.42WI","{\"latitude\":45.0328,\"longitude\":-93.3802}");
+	setDbValue("Stop.42YK","{\"latitude\":45.0314,\"longitude\":-93.3198}");
+	setDbValue("Stop.44FM","{\"latitude\":45.0354,\"longitude\":-93.2959}");
+	setDbValue("Stop.44PN","{\"latitude\":45.0354,\"longitude\":-93.3085}");
+	setDbValue("Stop.44RV","{\"latitude\":45.0476,\"longitude\":-93.2349}");
+	setDbValue("Stop.45BR","{\"latitude\":45.0368,\"longitude\":-93.2914}");
+	setDbValue("Stop.46BL","{\"latitude\":44.9197,\"longitude\":-93.2525}");
+	setDbValue("Stop.46CH","{\"latitude\":44.9196,\"longitude\":-93.2626}");
+	setDbValue("Stop.46GR","{\"latitude\":44.9196,\"longitude\":-93.2844}");
+	setDbValue("Stop.46NI","{\"latitude\":44.9197,\"longitude\":-93.2779}");
+	setDbValue("Stop.47FR","{\"latitude\":45.0388,\"longitude\":-93.3295}");
+	setDbValue("Stop.47OS","{\"latitude\":45.0397,\"longitude\":-93.3154}");
+	setDbValue("Stop.48GR","{\"latitude\":44.9159,\"longitude\":-93.2848}");
+	setDbValue("Stop.496S","{\"latitude\":45.0439,\"longitude\":-93.2873}");
+	setDbValue("Stop.49HU","{\"latitude\":45.0439,\"longitude\":-93.2995}");
+	setDbValue("Stop.49WE","{\"latitude\":44.9141,\"longitude\":-93.2807}");
+	setDbValue("Stop.4A17","{\"latitude\":44.8762,\"longitude\":-93.0043}");
+	setDbValue("Stop.4A4S","{\"latitude\":44.8667,\"longitude\":-93.0065}");
+	setDbValue("Stop.4AGR","{\"latitude\":45.2101,\"longitude\":-93.3852}");
+	setDbValue("Stop.4ALA","{\"latitude\":44.9482,\"longitude\":-93.2703}");
+	setDbValue("Stop.4MIN","{\"latitude\":44.9459,\"longitude\":-93.0911}");
+	setDbValue("Stop.4NIC","{\"latitude\":44.9798,\"longitude\":-93.2698}");
+	setDbValue("Stop.4S15","{\"latitude\":44.9802,\"longitude\":-93.2348}");
+	setDbValue("Stop.4SCE","{\"latitude\":44.9878,\"longitude\":-93.2539}");
+	setDbValue("Stop.4SHE","{\"latitude\":44.9805,\"longitude\":-93.2715}");
+	setDbValue("Stop.4SOA","{\"latitude\":44.9773,\"longitude\":-93.2269}");
+	setDbValue("Stop.4SRA","{\"latitude\":44.9779,\"longitude\":-93.2292}");
+	setDbValue("Stop.4WAB","{\"latitude\":44.9452,\"longitude\":-93.0931}");
+	setDbValue("Stop.5+SO","{\"latitude\":44.8655,\"longitude\":-93.0398}");
+	setDbValue("Stop.50BR","{\"latitude\":44.9124,\"longitude\":-93.2909}");
+	setDbValue("Stop.50FR","{\"latitude\":44.9126,\"longitude\":-93.3294}");
+	setDbValue("Stop.50PE","{\"latitude\":44.9123,\"longitude\":-93.3085}");
+	setDbValue("Stop.50PL","{\"latitude\":44.9128,\"longitude\":-93.2837}");
+	setDbValue("Stop.50XR","{\"latitude\":44.9125,\"longitude\":-93.3189}");
+	setDbValue("Stop.51BR","{\"latitude\":45.0477,\"longitude\":-93.3208}");
+	setDbValue("Stop.51CE","{\"latitude\":45.0609,\"longitude\":-93.2478}");
+	setDbValue("Stop.51PE","{\"latitude\":45.0475,\"longitude\":-93.3093}");
+	setDbValue("Stop.53LG","{\"latitude\":45.0513,\"longitude\":-93.3042}");
+	setDbValue("Stop.53UV","{\"latitude\":45.0644,\"longitude\":-93.263}");
+	setDbValue("Stop.54AL","{\"latitude\":44.8706,\"longitude\":-93.0792}");
+	setDbValue("Stop.55DO","{\"latitude\":44.9848,\"longitude\":-93.36}");
+	setDbValue("Stop.56CH","{\"latitude\":44.9014,\"longitude\":-93.2628}");
+	setDbValue("Stop.56LY","{\"latitude\":44.9019,\"longitude\":-93.2883}");
+	setDbValue("Stop.56PN","{\"latitude\":44.9015,\"longitude\":-93.3087}");
+	setDbValue("Stop.57CH","{\"latitude\":44.8998,\"longitude\":-93.2626}");
+	setDbValue("Stop.57DP","{\"latitude\":45.0584,\"longitude\":-93.2938}");
+	setDbValue("Stop.5821","{\"latitude\":44.898,\"longitude\":-93.2423}");
+	setDbValue("Stop.5828","{\"latitude\":44.8981,\"longitude\":-93.2323}");
+	setDbValue("Stop.58FR","{\"latitude\":44.8981,\"longitude\":-93.329}");
+	setDbValue("Stop.5A27","{\"latitude\":44.9538,\"longitude\":-93.269}");
+	setDbValue("Stop.5A4S","{\"latitude\":44.9768,\"longitude\":-93.263}");
+	setDbValue("Stop.5A7S","{\"latitude\":44.9739,\"longitude\":-93.2654}");
+	setDbValue("Stop.5AC3","{\"latitude\":44.9227,\"longitude\":-93.4061}");
+	setDbValue("Stop.5CED","{\"latitude\":44.9459,\"longitude\":-93.093}");
+	setDbValue("Stop.5MIN","{\"latitude\":44.9468,\"longitude\":-93.092}");
+	setDbValue("Stop.5S11","{\"latitude\":44.9718,\"longitude\":-93.2563}");
+	setDbValue("Stop.5S7S","{\"latitude\":44.9471,\"longitude\":-93.094}");
+	setDbValue("Stop.5STE","{\"latitude\":45.0864,\"longitude\":-93.0049}");
+	setDbValue("Stop.5WAS","{\"latitude\":44.9452,\"longitude\":-93.0981}");
+	setDbValue("Stop.60PN","{\"latitude\":44.8943,\"longitude\":-93.3087}");
+	setDbValue("Stop.61$C","{\"latitude\":45.0205,\"longitude\":-93.0518}");
+	setDbValue("Stop.61UN","{\"latitude\":45.079,\"longitude\":-93.2635}");
+	setDbValue("Stop.6234","{\"latitude\":44.8972,\"longitude\":-93.2234}");
+	setDbValue("Stop.62XR","{\"latitude\":44.8907,\"longitude\":-93.3186}");
+	setDbValue("Stop.63ZA","{\"latitude\":45.0694,\"longitude\":-93.3545}");
+	setDbValue("Stop.65BA","{\"latitude\":44.8854,\"longitude\":-93.3233}");
+	setDbValue("Stop.6617","{\"latitude\":44.8835,\"longitude\":-93.2505}");
+	setDbValue("Stop.6625","{\"latitude\":45.0745,\"longitude\":-93.2868}");
+	setDbValue("Stop.66BL","{\"latitude\":44.8835,\"longitude\":-93.2529}");
+	setDbValue("Stop.66CE","{\"latitude\":44.8836,\"longitude\":-93.2482}");
+	setDbValue("Stop.66LY","{\"latitude\":44.8835,\"longitude\":-93.2865}");
+	setDbValue("Stop.66NI","{\"latitude\":44.8835,\"longitude\":-93.2782}");
+	setDbValue("Stop.66PN","{\"latitude\":44.8835,\"longitude\":-93.3086}");
+	setDbValue("Stop.66PO","{\"latitude\":44.8836,\"longitude\":-93.2675}");
+	setDbValue("Stop.67ID","{\"latitude\":45.0765,\"longitude\":-93.3665}");
+	setDbValue("Stop.69FR","{\"latitude\":45.0802,\"longitude\":-93.3305}");
+	setDbValue("Stop.69HU","{\"latitude\":45.0798,\"longitude\":-93.2996}");
+	setDbValue("Stop.69MA","{\"latitude\":45.0801,\"longitude\":-93.4045}");
+	setDbValue("Stop.6BWY","{\"latitude\":44.9508,\"longitude\":-93.0864}");
+	setDbValue("Stop.6CED","{\"latitude\":44.9472,\"longitude\":-93.0939}");
+	setDbValue("Stop.6DOW","{\"latitude\":45.0239,\"longitude\":-93.2867}");
+	setDbValue("Stop.6ROB","{\"latitude\":44.948,\"longitude\":-93.0914}");
+	setDbValue("Stop.6S11","{\"latitude\":44.9715,\"longitude\":-93.2566}");
+	setDbValue("Stop.6S3A","{\"latitude\":44.9762,\"longitude\":-93.2676}");
+	setDbValue("Stop.6S7S","{\"latitude\":44.947,\"longitude\":-93.0972}");
+	setDbValue("Stop.6SHE","{\"latitude\":44.9789,\"longitude\":-93.2738}");
+	setDbValue("Stop.6SNI","{\"latitude\":44.9779,\"longitude\":-93.2716}");
+	setDbValue("Stop.6WAB","{\"latitude\":44.9467,\"longitude\":-93.0954}");
+	setDbValue("Stop.70VW","{\"latitude\":44.8764,\"longitude\":-93.3318}");
+	setDbValue("Stop.7101","{\"latitude\":44.9128,\"longitude\":-93.5031}");
+	setDbValue("Stop.73CE","{\"latitude\":45.1007,\"longitude\":-93.238}");
+	setDbValue("Stop.73FR","{\"latitude\":45.0873,\"longitude\":-93.3309}");
+	setDbValue("Stop.73HM","{\"latitude\":45.0873,\"longitude\":-93.4314}");
+	setDbValue("Stop.73UV","{\"latitude\":45.1006,\"longitude\":-93.2636}");
+	setDbValue("Stop.75DA","{\"latitude\":44.8408,\"longitude\":-93.0244}");
+	setDbValue("Stop.7677","{\"latitude\":44.8651,\"longitude\":-93.2955}");
+	setDbValue("Stop.76NE","{\"latitude\":44.8655,\"longitude\":-93.3059}");
+	setDbValue("Stop.77CO","{\"latitude\":44.8632,\"longitude\":-93.3456}");
+	setDbValue("Stop.77LY","{\"latitude\":44.8638,\"longitude\":-93.2885}");
+	setDbValue("Stop.77NI","{\"latitude\":44.8637,\"longitude\":-93.2783}");
+	setDbValue("Stop.77PO","{\"latitude\":44.8639,\"longitude\":-93.2681}");
+	setDbValue("Stop.78JO","{\"latitude\":44.8603,\"longitude\":-93.3331}");
+	setDbValue("Stop.78PI","{\"latitude\":44.861,\"longitude\":-93.3545}");
+	setDbValue("Stop.7ARC","{\"latitude\":44.9751,\"longitude\":-93.066}");
+	setDbValue("Stop.7BUG","{\"latitude\":44.9719,\"longitude\":-93.2599}");
+	setDbValue("Stop.7MAD","{\"latitude\":44.9044,\"longitude\":-93.1645}");
+	setDbValue("Stop.7MAR","{\"latitude\":45.0121,\"longitude\":-92.9926}");
+	setDbValue("Stop.7RAN","{\"latitude\":44.927,\"longitude\":-93.1516}");
+	setDbValue("Stop.7S2A","{\"latitude\":44.9759,\"longitude\":-93.2693}");
+	setDbValue("Stop.7S3A","{\"latitude\":44.9752,\"longitude\":-93.268}");
+	setDbValue("Stop.7S4A","{\"latitude\":44.9748,\"longitude\":-93.267}");
+	setDbValue("Stop.7SAL","{\"latitude\":44.9144,\"longitude\":-93.1464}");
+	setDbValue("Stop.7SHE","{\"latitude\":44.9737,\"longitude\":-93.2791}");
+	setDbValue("Stop.7SMA","{\"latitude\":44.9763,\"longitude\":-93.271}");
+	setDbValue("Stop.7SNI","{\"latitude\":44.9771,\"longitude\":-93.2726}");
+	setDbValue("Stop.7SOA","{\"latitude\":44.9857,\"longitude\":-93.2856}");
+	setDbValue("Stop.7SOL","{\"latitude\":44.9844,\"longitude\":-93.2843}");
+	setDbValue("Stop.7SPK","{\"latitude\":44.9729,\"longitude\":-93.2625}");
+	setDbValue("Stop.7SPL","{\"latitude\":44.992,\"longitude\":-93.294}");
+	setDbValue("Stop.7STC","{\"latitude\":44.9342,\"longitude\":-93.1513}");
+	setDbValue("Stop.7WHB","{\"latitude\":44.9667,\"longitude\":-93.0253}");
+	setDbValue("Stop.80CH","{\"latitude\":44.834,\"longitude\":-93.0435}");
+	setDbValue("Stop.80CO","{\"latitude\":44.8335,\"longitude\":-93.0231}");
+	setDbValue("Stop.80HA","{\"latitude\":44.8314,\"longitude\":-92.9668}");
+	setDbValue("Stop.80IV","{\"latitude\":44.8338,\"longitude\":-92.9258}");
+	setDbValue("Stop.80YA","{\"latitude\":45.0996,\"longitude\":-93.3547}");
+	setDbValue("Stop.80ZA","{\"latitude\":45.0998,\"longitude\":-93.3562}");
+	setDbValue("Stop.82SA","{\"latitude\":44.8537,\"longitude\":-93.3458}");
+	setDbValue("Stop.83NB","{\"latitude\":45.1053,\"longitude\":-93.3412}");
+	setDbValue("Stop.83NC","{\"latitude\":44.8537,\"longitude\":-93.3542}");
+	setDbValue("Stop.83NO","{\"latitude\":44.8538,\"longitude\":-93.3562}");
+	setDbValue("Stop.84FR","{\"latitude\":44.8517,\"longitude\":-93.3288}");
+	setDbValue("Stop.84NO","{\"latitude\":44.8527,\"longitude\":-93.3535}");
+	setDbValue("Stop.8565","{\"latitude\":45.1247,\"longitude\":-93.2348}");
+	setDbValue("Stop.85LI","{\"latitude\":44.8262,\"longitude\":-92.984}");
+	setDbValue("Stop.85XY","{\"latitude\":45.1093,\"longitude\":-93.3869}");
+	setDbValue("Stop.85ZA","{\"latitude\":45.1089,\"longitude\":-93.3566}");
+	setDbValue("Stop.8612","{\"latitude\":44.848,\"longitude\":-93.2581}");
+	setDbValue("Stop.86LY","{\"latitude\":44.8464,\"longitude\":-93.2886}");
+	setDbValue("Stop.86NI","{\"latitude\":44.8479,\"longitude\":-93.2784}");
+	setDbValue("Stop.89EC","{\"latitude\":45.1162,\"longitude\":-93.4519}");
+	setDbValue("Stop.89VW","{\"latitude\":45.1165,\"longitude\":-93.4296}");
+	setDbValue("Stop.8AC3","{\"latitude\":44.9213,\"longitude\":-93.4095}");
+	setDbValue("Stop.8EHE","{\"latitude\":44.9886,\"longitude\":-93.2433}");
+	setDbValue("Stop.8SCH","{\"latitude\":44.9391,\"longitude\":-93.2626}");
+	setDbValue("Stop.8SHE","{\"latitude\":44.9736,\"longitude\":-93.2744}");
+	setDbValue("Stop.8SNI","{\"latitude\":44.9761,\"longitude\":-93.2738}");
+	setDbValue("Stop.8SPK","{\"latitude\":44.9721,\"longitude\":-93.2642}");
+	setDbValue("Stop.90FR","{\"latitude\":44.842,\"longitude\":-93.3293}");
+	setDbValue("Stop.93WY","{\"latitude\":45.1233,\"longitude\":-93.3816}");
+	setDbValue("Stop.94BR","{\"latitude\":44.8335,\"longitude\":-93.2912}");
+	setDbValue("Stop.94JA","{\"latitude\":44.8335,\"longitude\":-93.3016}");
+	setDbValue("Stop.94NE","{\"latitude\":44.833,\"longitude\":-93.3584}");
+	setDbValue("Stop.97NO","{\"latitude\":45.1306,\"longitude\":-93.3357}");
+	setDbValue("Stop.98FR","{\"latitude\":44.8288,\"longitude\":-93.3294}");
+	setDbValue("Stop.98NI","{\"latitude\":44.8263,\"longitude\":-93.2785}");
+	setDbValue("Stop.98PO","{\"latitude\":44.8272,\"longitude\":-93.2683}");
+	setDbValue("Stop.99PK","{\"latitude\":45.15,\"longitude\":-93.2458}");
+	setDbValue("Stop.9SCH","{\"latitude\":44.9705,\"longitude\":-93.2631}");
+	setDbValue("Stop.9SNI","{\"latitude\":44.9752,\"longitude\":-93.2743}");
+	setDbValue("Stop.9SPO","{\"latitude\":44.9715,\"longitude\":-93.2659}");
+	setDbValue("Stop.ADAL","{\"latitude\":44.9846,\"longitude\":-93.1261}");
+	setDbValue("Stop.ALMR","{\"latitude\":44.8551,\"longitude\":-93.4599}");
+	setDbValue("Stop.AM12","{\"latitude\":44.8598,\"longitude\":-93.2584}");
+	setDbValue("Stop.AM2A","{\"latitude\":44.8607,\"longitude\":-93.2748}");
+	setDbValue("Stop.AMFR","{\"latitude\":44.8558,\"longitude\":-93.3291}");
+	setDbValue("Stop.AMMO","{\"latitude\":44.8585,\"longitude\":-93.305}");
+	setDbValue("Stop.AMNI","{\"latitude\":44.8596,\"longitude\":-93.278}");
+	setDbValue("Stop.ARHA","{\"latitude\":44.8879,\"longitude\":-93.0242}");
+	setDbValue("Stop.ARLA","{\"latitude\":44.992,\"longitude\":-93.0665}");
+	setDbValue("Stop.AUST","{\"latitude\":44.8002,\"longitude\":-93.578}");
+	setDbValue("Stop.AWMY","{\"latitude\":44.9774,\"longitude\":-93.0837}");
+	setDbValue("Stop.BAWI","{\"latitude\":45.0552,\"longitude\":-93.3804}");
+	setDbValue("Stop.BBNB","{\"latitude\":45.0845,\"longitude\":-93.3413}");
+	setDbValue("Stop.BDCE","{\"latitude\":44.9987,\"longitude\":-93.2473}");
+	setDbValue("Stop.BDJO","{\"latitude\":44.9988,\"longitude\":-93.237}");
+	setDbValue("Stop.BDPE","{\"latitude\":45.0039,\"longitude\":-93.3082}");
+	setDbValue("Stop.BDSE","{\"latitude\":45.1178,\"longitude\":-93.3714}");
+	setDbValue("Stop.BDZA","{\"latitude\":45.15,\"longitude\":-93.4216}");
+	setDbValue("Stop.BECA","{\"latitude\":44.8998,\"longitude\":-93.0923}");
+	setDbValue("Stop.BEID","{\"latitude\":44.9222,\"longitude\":-93.0624}");
+	setDbValue("Stop.BETI","{\"latitude\":44.8972,\"longitude\":-93.3534}");
+	setDbValue("Stop.BKWE","{\"latitude\":45.0931,\"longitude\":-93.3541}");
+	setDbValue("Stop.BKWR","{\"latitude\":45.0944,\"longitude\":-93.2866}");
+	setDbValue("Stop.BL54","{\"latitude\":44.9053,\"longitude\":-93.2525}");
+	setDbValue("Stop.BLCA","{\"latitude\":44.9342,\"longitude\":-93.3862}");
+	setDbValue("Stop.BLCF","{\"latitude\":45.0599,\"longitude\":-92.9948}");
+	setDbValue("Stop.BLLA","{\"latitude\":44.9484,\"longitude\":-93.2525}");
+	setDbValue("Stop.BLLK","{\"latitude\":44.9484,\"longitude\":-93.2797}");
+	setDbValue("Stop.BOCD","{\"latitude\":44.9555,\"longitude\":-93.391}");
+	setDbValue("Stop.BONO","{\"latitude\":45.0817,\"longitude\":-93.3923}");
+	setDbValue("Stop.BR2S","{\"latitude\":44.9989,\"longitude\":-93.2707}");
+	setDbValue("Stop.BR84","{\"latitude\":45.1062,\"longitude\":-93.3769}");
+	setDbValue("Stop.BRBL","{\"latitude\":45.0549,\"longitude\":-93.3694}");
+	setDbValue("Stop.BRLY","{\"latitude\":44.9991,\"longitude\":-93.2883}");
+	setDbValue("Stop.BRST","{\"latitude\":44.9987,\"longitude\":-93.2265}");
+	setDbValue("Stop.BRUN","{\"latitude\":44.9678,\"longitude\":-93.2065}");
+	setDbValue("Stop.BUEK","{\"latitude\":44.9845,\"longitude\":-93.1854}");
+	setDbValue("Stop.BUWI","{\"latitude\":44.9485,\"longitude\":-93.0091}");
+	setDbValue("Stop.C6FE","{\"latitude\":44.9967,\"longitude\":-93.4614}");
+	setDbValue("Stop.C6XE","{\"latitude\":44.9967,\"longitude\":-93.451}");
+	setDbValue("Stop.C9AN","{\"latitude\":45.0291,\"longitude\":-93.4574}");
+	setDbValue("Stop.C9FE","{\"latitude\":45.0293,\"longitude\":-93.4611}");
+	setDbValue("Stop.CACM","{\"latitude\":44.9914,\"longitude\":-93.1051}");
+	setDbValue("Stop.CANW","{\"latitude\":45.0103,\"longitude\":-93.4494}");
+	setDbValue("Stop.CAOK","{\"latitude\":44.9697,\"longitude\":-93.4695}");
+	setDbValue("Stop.CBDL","{\"latitude\":44.9867,\"longitude\":-93.1263}");
+	setDbValue("Stop.CCVC","{\"latitude\":45.0199,\"longitude\":-93.1379}");
+	setDbValue("Stop.CDLO","{\"latitude\":44.9599,\"longitude\":-93.3709}");
+	setDbValue("Stop.CEGA","{\"latitude\":45.075,\"longitude\":-93.242}");
+	setDbValue("Stop.CELA","{\"latitude\":44.9484,\"longitude\":-93.2474}");
+	setDbValue("Stop.CELR","{\"latitude\":44.9187,\"longitude\":-92.9838}");
+	setDbValue("Stop.CESH","{\"latitude\":44.8294,\"longitude\":-93.2742}");
+	setDbValue("Stop.CEUN","{\"latitude\":44.9868,\"longitude\":-93.2548}");
+	setDbValue("Stop.CEWA","{\"latitude\":44.9727,\"longitude\":-93.2474}");
+	setDbValue("Stop.CHFR","{\"latitude\":44.9627,\"longitude\":-93.2627}");
+	setDbValue("Stop.CHPL","{\"latitude\":44.9409,\"longitude\":-93.0731}");
+	setDbValue("Stop.CLFO","{\"latitude\":44.9204,\"longitude\":-93.1875}");
+	setDbValue("Stop.CLMO","{\"latitude\":44.9125,\"longitude\":-93.1874}");
+	setDbValue("Stop.CO17","{\"latitude\":44.9559,\"longitude\":-92.9925}");
+	setDbValue("Stop.COCL","{\"latitude\":44.9775,\"longitude\":-93.1889}");
+	setDbValue("Stop.COEL","{\"latitude\":45.1235,\"longitude\":-93.4475}");
+	setDbValue("Stop.COES","{\"latitude\":44.987,\"longitude\":-93.2025}");
+	setDbValue("Stop.COLA","{\"latitude\":45.0325,\"longitude\":-93.4342}");
+	setDbValue("Stop.COSN","{\"latitude\":44.9772,\"longitude\":-93.1669}");
+	setDbValue("Stop.COSP","{\"latitude\":45.1381,\"longitude\":-93.2733}");
+	setDbValue("Stop.COWO","{\"latitude\":44.9223,\"longitude\":-93.536}");
+	setDbValue("Stop.CRDU","{\"latitude\":44.9346,\"longitude\":-93.6209}");
+	setDbValue("Stop.CRMA","{\"latitude\":44.9482,\"longitude\":-93.1924}");
+	setDbValue("Stop.CU45","{\"latitude\":45.0351,\"longitude\":-93.4087}");
+	setDbValue("Stop.CUGR","{\"latitude\":45.041,\"longitude\":-92.8219}");
+	setDbValue("Stop.CXCO","{\"latitude\":44.9014,\"longitude\":-93.0462}");
+	setDbValue("Stop.CYEM","{\"latitude\":44.9667,\"longitude\":-93.0899}");
+	setDbValue("Stop.CYWS","{\"latitude\":44.9668,\"longitude\":-93.0856}");
+	setDbValue("Stop.DA16","{\"latitude\":45.1889,\"longitude\":-93.3969}");
+	setDbValue("Stop.DAFR","{\"latitude\":44.9702,\"longitude\":-93.1262}");
+	setDbValue("Stop.DAGR","{\"latitude\":44.94,\"longitude\":-93.1263}");
+	setDbValue("Stop.DASH","{\"latitude\":44.8971,\"longitude\":-93.1722}");
+	setDbValue("Stop.DCLV","{\"latitude\":45.0251,\"longitude\":-93.1872}");
+	setDbValue("Stop.DGHE","{\"latitude\":44.9667,\"longitude\":-93.2885}");
+	setDbValue("Stop.DINI","{\"latitude\":44.9039,\"longitude\":-93.2781}");
+	setDbValue("Stop.DOMD","{\"latitude\":44.866,\"longitude\":-93.1297}");
+	setDbValue("Stop.DOOL","{\"latitude\":44.9959,\"longitude\":-93.3603}");
+	setDbValue("Stop.DOSM","{\"latitude\":44.9162,\"longitude\":-93.1018}");
+	setDbValue("Stop.EDJE","{\"latitude\":44.9306,\"longitude\":-93.1494}");
+	setDbValue("Stop.EDLC","{\"latitude\":45.0206,\"longitude\":-93.0765}");
+	setDbValue("Stop.EDMY","{\"latitude\":44.9772,\"longitude\":-93.007}");
+	setDbValue("Stop.EDSN","{\"latitude\":44.9093,\"longitude\":-93.1669}");
+	setDbValue("Stop.EDVE","{\"latitude\":44.9089,\"longitude\":-93.3563}");
+	setDbValue("Stop.EGLA","{\"latitude\":44.9921,\"longitude\":-93.0455}");
+	setDbValue("Stop.EGUN","{\"latitude\":45.1644,\"longitude\":-93.2664}");
+	setDbValue("Stop.EMBD","{\"latitude\":45.0011,\"longitude\":-93.294}");
+	setDbValue("Stop.ENBF","{\"latitude\":44.8349,\"longitude\":-93.3942}");
+	setDbValue("Stop.EUFR","{\"latitude\":44.9647,\"longitude\":-93.2028}");
+	setDbValue("Stop.EXBR","{\"latitude\":44.9285,\"longitude\":-93.3556}");
+	setDbValue("Stop.EXFR","{\"latitude\":44.9405,\"longitude\":-93.3293}");
+	setDbValue("Stop.EXQU","{\"latitude\":44.9324,\"longitude\":-93.3433}");
+	setDbValue("Stop.FACC","{\"latitude\":45.0211,\"longitude\":-93.177}");
+	setDbValue("Stop.FAUN","{\"latitude\":44.9559,\"longitude\":-93.1772}");
+	setDbValue("Stop.FCSO","{\"latitude\":44.8817,\"longitude\":-93.4106}");
+	setDbValue("Stop.FE19","{\"latitude\":45.0001,\"longitude\":-93.4617}");
+	setDbValue("Stop.FE34","{\"latitude\":45.0183,\"longitude\":-93.4615}");
+	setDbValue("Stop.FILL","{\"latitude\":44.9413,\"longitude\":-93.085}");
+	setDbValue("Stop.FINN","{\"latitude\":44.9417,\"longitude\":-93.1898}");
+	setDbValue("Stop.FLNA","{\"latitude\":45.1316,\"longitude\":-93.1843}");
+	setDbValue("Stop.FRCE","{\"latitude\":44.9627,\"longitude\":-93.2451}");
+	setDbValue("Stop.FRDO","{\"latitude\":45.024,\"longitude\":-93.2955}");
+	setDbValue("Stop.FRH8","{\"latitude\":45.0429,\"longitude\":-93.198}");
+	setDbValue("Stop.FRHE","{\"latitude\":44.9624,\"longitude\":-93.2916}");
+	setDbValue("Stop.FRLE","{\"latitude\":44.9705,\"longitude\":-93.1464}");
+	setDbValue("Stop.FRLY","{\"latitude\":44.9627,\"longitude\":-93.288}");
+	setDbValue("Stop.FRMN","{\"latitude\":44.8622,\"longitude\":-93.3298}");
+	setDbValue("Stop.FROS","{\"latitude\":44.8105,\"longitude\":-93.3295}");
+	setDbValue("Stop.FVCB","{\"latitude\":45.0089,\"longitude\":-93.1769}");
+	setDbValue("Stop.FWY2","{\"latitude\":45.2479,\"longitude\":-92.999}");
+	setDbValue("Stop.GANO","{\"latitude\":44.8975,\"longitude\":-93.1771}");
+	setDbValue("Stop.GCIR","{\"latitude\":44.9048,\"longitude\":-93.4085}");
+	setDbValue("Stop.GLCD","{\"latitude\":44.9808,\"longitude\":-93.2992}");
+	setDbValue("Stop.GLPN","{\"latitude\":44.9807,\"longitude\":-93.3083}");
+	setDbValue("Stop.GLXN","{\"latitude\":44.978,\"longitude\":-93.351}");
+	setDbValue("Stop.GOBU","{\"latitude\":44.9848,\"longitude\":-93.1818}");
+	setDbValue("Stop.GOCO","{\"latitude\":44.9728,\"longitude\":-93.3586}");
+	setDbValue("Stop.GRNI","{\"latitude\":44.9697,\"longitude\":-93.2779}");
+	setDbValue("Stop.GRSN","{\"latitude\":44.94,\"longitude\":-93.1671}");
+	setDbValue("Stop.GVKN","{\"latitude\":44.999,\"longitude\":-93.302}");
+	setDbValue("Stop.GVPE","{\"latitude\":44.9987,\"longitude\":-93.3081}");
+	setDbValue("Stop.H120","{\"latitude\":45.0574,\"longitude\":-92.9713}");
+	setDbValue("Stop.HACO","{\"latitude\":45.161,\"longitude\":-93.3179}");
+	setDbValue("Stop.HAST","{\"latitude\":44.8713,\"longitude\":-92.9995}");
+	setDbValue("Stop.HEBE","{\"latitude\":44.9513,\"longitude\":-93.4196}");
+	setDbValue("Stop.HEIN","{\"latitude\":44.9955,\"longitude\":-93.211}");
+	setDbValue("Stop.HLCO","{\"latitude\":44.9775,\"longitude\":-93.1568}");
+	setDbValue("Stop.HO7A","{\"latitude\":44.9991,\"longitude\":-93.0125}");
+	setDbValue("Stop.HOCJ","{\"latitude\":45.0875,\"longitude\":-93.1204}");
+	setDbValue("Stop.HORI","{\"latitude\":45.0629,\"longitude\":-93.1069}");
+	setDbValue("Stop.HOWH","{\"latitude\":44.9885,\"longitude\":-93.0252}");
+	setDbValue("Stop.HUBI","{\"latitude\":44.9472,\"longitude\":-92.9538}");
+	setDbValue("Stop.I-SN","{\"latitude\":44.951,\"longitude\":-93.167}");
+	setDbValue("Stop.I346","{\"latitude\":44.9197,\"longitude\":-93.2747}");
+	setDbValue("Stop.IN55","{\"latitude\":45.0025,\"longitude\":-93.445}");
+	setDbValue("Stop.INID","{\"latitude\":44.8414,\"longitude\":-92.9403}");
+	setDbValue("Stop.INSV","{\"latitude\":45.0677,\"longitude\":-93.2188}");
+	setDbValue("Stop.INXE","{\"latitude\":45.0024,\"longitude\":-93.4513}");
+	setDbValue("Stop.IOWA","{\"latitude\":44.9892,\"longitude\":-93.0252}");
+	setDbValue("Stop.IVY","{\"latitude\":44.9814,\"longitude\":-92.9848}");
+	setDbValue("Stop.J120","{\"latitude\":45.0315,\"longitude\":-92.9855}");
+	setDbValue("Stop.JAFO","{\"latitude\":45.2085,\"longitude\":-93.4046}");
+	setDbValue("Stop.JFTR","{\"latitude\":45.1611,\"longitude\":-93.2558}");
+	setDbValue("Stop.JOEH","{\"latitude\":44.9915,\"longitude\":-93.2368}");
+	setDbValue("Stop.KACR","{\"latitude\":44.9818,\"longitude\":-93.2148}");
+	setDbValue("Stop.KEFO","{\"latitude\":44.9178,\"longitude\":-93.1849}");
+	setDbValue("Stop.LA72","{\"latitude\":45.0869,\"longitude\":-93.502}");
+	setDbValue("Stop.LACL","{\"latitude\":44.9917,\"longitude\":-93.187}");
+	setDbValue("Stop.LADU","{\"latitude\":44.992,\"longitude\":-93.1488}");
+	setDbValue("Stop.LAEG","{\"latitude\":44.9919,\"longitude\":-93.0762}");
+	setDbValue("Stop.LAEM","{\"latitude\":44.9492,\"longitude\":-93.2943}");
+	setDbValue("Stop.LAFR","{\"latitude\":44.9483,\"longitude\":-93.3285}");
+	setDbValue("Stop.LAFS","{\"latitude\":45.0692,\"longitude\":-93.5021}");
+	setDbValue("Stop.LAGR","{\"latitude\":44.9557,\"longitude\":-93.0849}");
+	setDbValue("Stop.LALY","{\"latitude\":44.9484,\"longitude\":-93.2881}");
+	setDbValue("Stop.LAMC","{\"latitude\":44.9331,\"longitude\":-93.0049}");
+	setDbValue("Stop.LAMH","{\"latitude\":44.9487,\"longitude\":-93.2345}");
+	setDbValue("Stop.LAMK","{\"latitude\":44.9331,\"longitude\":-93.0049}");
+	setDbValue("Stop.LAUP","{\"latitude\":44.9735,\"longitude\":-93.3146}");
+	setDbValue("Stop.LIDU","{\"latitude\":44.9991,\"longitude\":-93.3516}");
+	setDbValue("Stop.LKBW","{\"latitude\":44.9393,\"longitude\":-93.3637}");
+	setDbValue("Stop.LNLY","{\"latitude\":45.0131,\"longitude\":-93.288}");
+	setDbValue("Stop.LO77","{\"latitude\":44.8648,\"longitude\":-93.2442}");
+	setDbValue("Stop.LOND","{\"latitude\":44.9302,\"longitude\":-93.0048}");
+	setDbValue("Stop.LUMT","{\"latitude\":44.9496,\"longitude\":-93.371}");
+	setDbValue("Stop.LUWA","{\"latitude\":44.9392,\"longitude\":-93.37}");
+	setDbValue("Stop.LVME","{\"latitude\":44.8837,\"longitude\":-93.0844}");
+	setDbValue("Stop.LW2S","{\"latitude\":45.0131,\"longitude\":-93.2662}");
+	setDbValue("Stop.LWCE","{\"latitude\":45.0132,\"longitude\":-93.2473}");
+	setDbValue("Stop.LWPE","{\"latitude\":45.0132,\"longitude\":-93.3083}");
+	setDbValue("Stop.LXCF","{\"latitude\":45.0585,\"longitude\":-93.1471}");
+	setDbValue("Stop.LXGR","{\"latitude\":44.94,\"longitude\":-93.1466}");
+	setDbValue("Stop.LXNO","{\"latitude\":45.1532,\"longitude\":-93.1632}");
+	setDbValue("Stop.LXUN","{\"latitude\":44.9557,\"longitude\":-93.1465}");
+	setDbValue("Stop.LY56","{\"latitude\":44.9019,\"longitude\":-93.2883}");
+	setDbValue("Stop.LYLS","{\"latitude\":44.8808,\"longitude\":-93.2878}");
+	setDbValue("Stop.M109","{\"latitude\":44.8067,\"longitude\":-93.3842}");
+	setDbValue("Stop.MA10","{\"latitude\":44.9735,\"longitude\":-93.2733}");
+	setDbValue("Stop.MA3S","{\"latitude\":44.9802,\"longitude\":-93.2678}");
+	setDbValue("Stop.MA4S","{\"latitude\":44.9791,\"longitude\":-93.2687}");
+	setDbValue("Stop.MA8S","{\"latitude\":44.9753,\"longitude\":-93.2718}");
+	setDbValue("Stop.MAJA","{\"latitude\":44.9767,\"longitude\":-93.0965}");
+	setDbValue("Stop.MAN3","{\"latitude\":45.198,\"longitude\":-93.3872}");
+	setDbValue("Stop.MARI","{\"latitude\":44.9774,\"longitude\":-93.106}");
+	setDbValue("Stop.MARS","{\"latitude\":44.9484,\"longitude\":-93.1874}");
+	setDbValue("Stop.MAUN","{\"latitude\":44.9558,\"longitude\":-93.1096}");
+	setDbValue("Stop.MAWA","{\"latitude\":44.9807,\"longitude\":-93.2673}");
+	setDbValue("Stop.MCKN","{\"latitude\":44.9631,\"longitude\":-93.0056}");
+	setDbValue("Stop.MCPI","{\"latitude\":44.8297,\"longitude\":-93.6118}");
+	setDbValue("Stop.MDAL","{\"latitude\":44.9774,\"longitude\":-93.1264}");
+	setDbValue("Stop.MEDO","{\"latitude\":45.0073,\"longitude\":-93.3608}");
+	setDbValue("Stop.MEEX","{\"latitude\":44.927,\"longitude\":-93.3627}");
+	setDbValue("Stop.MEHI","{\"latitude\":45.0074,\"longitude\":-93.3981}");
+	setDbValue("Stop.MHDA","{\"latitude\":44.963,\"longitude\":-93.1265}");
+	setDbValue("Stop.MICO","{\"latitude\":45.1749,\"longitude\":-93.3465}");
+	setDbValue("Stop.MIUV","{\"latitude\":45.0861,\"longitude\":-93.2635}");
+	setDbValue("Stop.MNTC","{\"latitude\":44.862,\"longitude\":-93.3286}");
+	setDbValue("Stop.MO1A","{\"latitude\":45.1961,\"longitude\":-93.3907}");
+	setDbValue("Stop.MOND","{\"latitude\":44.9515,\"longitude\":-93.0631}");
+	setDbValue("Stop.MS11","{\"latitude\":44.9243,\"longitude\":-93.4142}");
+	setDbValue("Stop.MT60","{\"latitude\":44.9405,\"longitude\":-93.4488}");
+	setDbValue("Stop.MTDV","{\"latitude\":44.9125,\"longitude\":-93.1721}");
+	setDbValue("Stop.MTH1","{\"latitude\":44.9415,\"longitude\":-93.4843}");
+	setDbValue("Stop.MTMP","{\"latitude\":45.072,\"longitude\":-92.956}");
+	setDbValue("Stop.MTPL","{\"latitude\":44.9412,\"longitude\":-93.4462}");
+	setDbValue("Stop.MTTE","{\"latitude\":44.9494,\"longitude\":-93.381}");
+	setDbValue("Stop.MTWI","{\"latitude\":44.9379,\"longitude\":-93.467}");
+	setDbValue("Stop.MYAC","{\"latitude\":44.9775,\"longitude\":-93.066}");
+	setDbValue("Stop.MYCL","{\"latitude\":44.9775,\"longitude\":-93.0431}");
+	setDbValue("Stop.MYWH","{\"latitude\":44.9776,\"longitude\":-93.0253}");
+	setDbValue("Stop.N+PR","{\"latitude\":44.9713,\"longitude\":-93.4208}");
+	setDbValue("Stop.NABA","{\"latitude\":45.0585,\"longitude\":-93.4082}");
+	setDbValue("Stop.NAFL","{\"latitude\":45.1316,\"longitude\":-93.1843}");
+	setDbValue("Stop.NDFO","{\"latitude\":45.1775,\"longitude\":-93.278}");
+	setDbValue("Stop.NDHA","{\"latitude\":45.1812,\"longitude\":-93.3182}");
+	setDbValue("Stop.NDIL","{\"latitude\":45.1775,\"longitude\":-93.278}");
+	setDbValue("Stop.NIFR","{\"latitude\":44.9627,\"longitude\":-93.2778}");
+	setDbValue("Stop.NOBE","{\"latitude\":44.8966,\"longitude\":-93.3493}");
+	setDbValue("Stop.NOCU","{\"latitude\":45.0097,\"longitude\":-93.3388}");
+	setDbValue("Stop.NOGR","{\"latitude\":44.8572,\"longitude\":-93.3531}");
+	setDbValue("Stop.NWME","{\"latitude\":45.0171,\"longitude\":-93.4423}");
+	setDbValue("Stop.O81A","{\"latitude\":45.0614,\"longitude\":-93.1934}");
+	setDbValue("Stop.OADE","{\"latitude\":44.9724,\"longitude\":-93.2271}");
+	setDbValue("Stop.OAMA","{\"latitude\":44.8904,\"longitude\":-93.0706}");
+	setDbValue("Stop.OAWA","{\"latitude\":44.9738,\"longitude\":-93.2271}");
+	setDbValue("Stop.OLIV","{\"latitude\":45.053,\"longitude\":-92.8193}");
+	setDbValue("Stop.ORPE","{\"latitude\":45.0352,\"longitude\":-93.5074}");
+	setDbValue("Stop.OS65","{\"latitude\":45.1078,\"longitude\":-93.2437}");
+	setDbValue("Stop.OSER","{\"latitude\":45.1039,\"longitude\":-93.2723}");
+	setDbValue("Stop.OSMN","{\"latitude\":45.1082,\"longitude\":-93.2535}");
+	setDbValue("Stop.OWDE","{\"latitude\":44.8977,\"longitude\":-93.0715}");
+	setDbValue("Stop.OWHA","{\"latitude\":45.0468,\"longitude\":-93.1291}");
+	setDbValue("Stop.PAGE","{\"latitude\":44.9757,\"longitude\":-93.0736}");
+	setDbValue("Stop.PE55","{\"latitude\":44.9844,\"longitude\":-93.308}");
+	setDbValue("Stop.PERO","{\"latitude\":45.0357,\"longitude\":-93.5074}");
+	setDbValue("Stop.PKGA","{\"latitude\":44.8684,\"longitude\":-93.3316}");
+	setDbValue("Stop.PKWA","{\"latitude\":44.9694,\"longitude\":-93.3497}");
+	setDbValue("Stop.PLBO","{\"latitude\":44.9918,\"longitude\":-93.3903}");
+	setDbValue("Stop.PLGA","{\"latitude\":44.9646,\"longitude\":-93.3493}");
+	setDbValue("Stop.PLTW","{\"latitude\":44.9916,\"longitude\":-93.3211}");
+	setDbValue("Stop.PLWA","{\"latitude\":44.9921,\"longitude\":-93.2815}");
+	setDbValue("Stop.POHU","{\"latitude\":44.9112,\"longitude\":-93.5072}");
+	setDbValue("Stop.QUBA","{\"latitude\":45.0646,\"longitude\":-93.4402}");
+	setDbValue("Stop.RALX","{\"latitude\":44.9269,\"longitude\":-93.1468}");
+	setDbValue("Stop.RARL","{\"latitude\":44.9847,\"longitude\":-93.1059}");
+	setDbValue("Stop.RASN","{\"latitude\":44.927,\"longitude\":-93.1672}");
+	setDbValue("Stop.RCCC","{\"latitude\":45.0209,\"longitude\":-93.1061}");
+	setDbValue("Stop.RCLP","{\"latitude\":44.9919,\"longitude\":-93.1059}");
+	setDbValue("Stop.RICB","{\"latitude\":45.0094,\"longitude\":-93.1058}");
+	setDbValue("Stop.RODE","{\"latitude\":44.9991,\"longitude\":-93.0811}");
+	setDbValue("Stop.ROMO","{\"latitude\":44.9088,\"longitude\":-93.0806}");
+	setDbValue("Stop.SCBO","{\"latitude\":45.0506,\"longitude\":-93.3909}");
+	setDbValue("Stop.SCNA","{\"latitude\":45.0437,\"longitude\":-93.4057}");
+	setDbValue("Stop.SCSU","{\"latitude\":45.0665,\"longitude\":-93.3087}");
+	setDbValue("Stop.SFAI","{\"latitude\":44.975,\"longitude\":-93.4209}");
+	setDbValue("Stop.SH10","{\"latitude\":44.8289,\"longitude\":-93.2594}");
+	setDbValue("Stop.SH18","{\"latitude\":45.0003,\"longitude\":-93.4761}");
+	setDbValue("Stop.SLDA","{\"latitude\":44.9465,\"longitude\":-93.1262}");
+	setDbValue("Stop.SLHA","{\"latitude\":44.9466,\"longitude\":-93.1564}");
+	setDbValue("Stop.SLRO","{\"latitude\":45.001,\"longitude\":-93.0873}");
+	setDbValue("Stop.SMET","{\"latitude\":44.906,\"longitude\":-93.4113}");
+	setDbValue("Stop.SMLR","{\"latitude\":45.0437,\"longitude\":-93.4361}");
+	setDbValue("Stop.SMTF","{\"latitude\":44.9464,\"longitude\":-93.1025}");
+	setDbValue("Stop.SMVI","{\"latitude\":45.0436,\"longitude\":-93.4817}");
+	setDbValue("Stop.SMWE","{\"latitude\":44.8982,\"longitude\":-93.101}");
+	setDbValue("Stop.SNLA","{\"latitude\":44.9917,\"longitude\":-93.1666}");
+	setDbValue("Stop.SNMA","{\"latitude\":44.9629,\"longitude\":-93.167}");
+	setDbValue("Stop.SNUN","{\"latitude\":44.9555,\"longitude\":-93.1669}");
+	setDbValue("Stop.STCL","{\"latitude\":44.9342,\"longitude\":-93.1874}");
+	setDbValue("Stop.STCO","{\"latitude\":44.9301,\"longitude\":-93.0787}");
+	setDbValue("Stop.STEH","{\"latitude\":44.9915,\"longitude\":-93.2273}");
+	setDbValue("Stop.STNO","{\"latitude\":44.9692,\"longitude\":-93.0114}");
+	setDbValue("Stop.STNQ","{\"latitude\":45.0059,\"longitude\":-93.2268}");
+	setDbValue("Stop.STSN","{\"latitude\":44.9343,\"longitude\":-93.167}");
+	setDbValue("Stop.STWA","{\"latitude\":45.0571,\"longitude\":-92.9551}");
+	setDbValue("Stop.SUCR","{\"latitude\":44.9419,\"longitude\":-93.1924}");
+	setDbValue("Stop.THCH","{\"latitude\":44.9016,\"longitude\":-93.0959}");
+	setDbValue("Stop.THLU","{\"latitude\":45.221,\"longitude\":-93.409}");
+	setDbValue("Stop.TIMB","{\"latitude\":44.9871,\"longitude\":-93.0931}");
+	setDbValue("Stop.TRCO","{\"latitude\":44.8897,\"longitude\":-93.3688}");
+	setDbValue("Stop.TY2S","{\"latitude\":44.9281,\"longitude\":-93.3907}");
+	setDbValue("Stop.TYLA","{\"latitude\":44.9314,\"longitude\":-93.3907}");
+	setDbValue("Stop.UNDA","{\"latitude\":44.9557,\"longitude\":-93.1259}");
+	setDbValue("Stop.VEGL","{\"latitude\":44.8959,\"longitude\":-93.3867}");
+	setDbValue("Stop.VEMT","{\"latitude\":44.9488,\"longitude\":-93.3501}");
+	setDbValue("Stop.VI28","{\"latitude\":45.0112,\"longitude\":-93.4816}");
+	setDbValue("Stop.VI47","{\"latitude\":45.0642,\"longitude\":-93.4818}");
+	setDbValue("Stop.VI55","{\"latitude\":45.0187,\"longitude\":-93.4818}");
+	setDbValue("Stop.VVWO","{\"latitude\":44.8917,\"longitude\":-93.339}");
+	setDbValue("Stop.WA11","{\"latitude\":44.9755,\"longitude\":-93.2529}");
+	setDbValue("Stop.WA2A","{\"latitude\":44.9803,\"longitude\":-93.2656}");
+	setDbValue("Stop.WA4A","{\"latitude\":44.9795,\"longitude\":-93.263}");
+	setDbValue("Stop.WA76","{\"latitude\":44.8656,\"longitude\":-93.3987}");
+	setDbValue("Stop.WA8A","{\"latitude\":44.9889,\"longitude\":-93.2784}");
+	setDbValue("Stop.WA9A","{\"latitude\":44.9897,\"longitude\":-93.2799}");
+	setDbValue("Stop.WAGE","{\"latitude\":44.901,\"longitude\":-93.5685}");
+	setDbValue("Stop.WAHE","{\"latitude\":44.9822,\"longitude\":-93.2692}");
+	setDbValue("Stop.WAMY","{\"latitude\":45.0568,\"longitude\":-92.8056}");
+	setDbValue("Stop.WDWA","{\"latitude\":44.9397,\"longitude\":-93.3573}");
+	setDbValue("Stop.WEDL","{\"latitude\":45.1091,\"longitude\":-93.492}");
+	setDbValue("Stop.WELA","{\"latitude\":44.9919,\"longitude\":-93.0865}");
+	setDbValue("Stop.WH$E","{\"latitude\":45.0503,\"longitude\":-93.0153}");
+	setDbValue("Stop.WHBU","{\"latitude\":44.9487,\"longitude\":-93.0252}");
+	setDbValue("Stop.WHSU","{\"latitude\":44.9497,\"longitude\":-93.0251}");
+	setDbValue("Stop.WIGV","{\"latitude\":44.9854,\"longitude\":-93.3802}");
+	setDbValue("Stop.WIHU","{\"latitude\":44.9313,\"longitude\":-93.0852}");
+	setDbValue("Stop.WIML","{\"latitude\":45.0074,\"longitude\":-93.3811}");
+	setDbValue("Stop.WLTE","{\"latitude\":45.014,\"longitude\":-93.2048}");
+	setDbValue("Stop.WNHO","{\"latitude\":44.9932,\"longitude\":-93.2177}");
+	setDbValue("Stop.WYLA","{\"latitude\":44.9866,\"longitude\":-93.5716}");
+	setDbValue("Stop.XE34","{\"latitude\":45.0195,\"longitude\":-93.4514}");
+	setDbValue("Stop.XE6A","{\"latitude\":44.9862,\"longitude\":-93.4512}");
+	setDbValue("Stop.XEGV","{\"latitude\":44.9991,\"longitude\":-93.3184}");
+}	
+
+// -------------------------------- local storage -- end
+</script>
+</head>
+
+<body>
+<nav role="navigation" class="navbar navbar-default navbar-static-top">
+	<div class="container">
+		<!-- Brand and toggle get grouped for better mobile display -->
+		<div class="navbar-header">
+			<button type="button" data-target="#navbarCollapse" data-toggle="collapse" class="navbar-toggle">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			</button>
+			<span class="navbar-brand" id="title1" >Bus Schedule</span>
+		</div>
+		<!-- Collection of nav links and other content for toggling -->
+		<div id="navbarCollapse" class="collapse navbar-collapse">
+			<ul class="nav navbar-nav">
+				<li class="active btn btn-default" onclick="selectRoute()">Route</li>
+				<li class="divider"></li>
+				<li id="recent0" class="active btn btn-default hidden" onclick="selectRecent(0);">&nbsp;</li>
+				<li id="recent1" class="active btn btn-default hidden" onclick="selectRecent(1);">&nbsp;</li>
+				<li id="recent2" class="active btn btn-default hidden" onclick="selectRecent(2);">&nbsp;</li>
+				<li id="recent3" class="active btn btn-default hidden" onclick="selectRecent(3);">&nbsp;</li>
+				<li id="recent4" class="active btn btn-default hidden" onclick="selectRecent(4);">&nbsp;</li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				<div class="dropdown">
+					<li class="btn btn-default dropdown-toggle" data-toggle="dropdown" >
+						Utils<span class="caret"></span>
+					</li>
+						<ul class="dropdown-menu" >
+							<li class="btn btn-danger" id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
+							<li class="divider"></li>
+							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
+							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
+						</ul>
+				</div>
+			</ul>
+		</div>
+	</div>
+</nav>
+
+<div id="id00A"></div>
+<div id="separator" class="hr" style="display: none;" > 
+	<hr>
+</div>
+<div id="id00C"></div>
+<div id="id00B"></div>
+
+<div id="id01"></div>
+<div id="id02"></div>
+
+<script type="text/javascript">
+// global variables for location
+var Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
+
+var SouthAndWestOfGatewayRamp  = {latitude:44.9779802, longitude:-93.2642134};   //133  waypoint before Marquette and 4th
+var Washington300S     = {latitude:44.979682,  longitude:-93.264170};            // 133 bus is on the move
+var SWofWashington300S = {latitude:44.979299,  longitude:-93.263962};
+var GrantAnd35W        = {latitude:44.969878,  longitude:-93.269835};            //133  returning, still on 35W
+
+var FourthStreet215S = {latitude:44.978416,  longitude:-93.266661};   // #7
+var SixthStreet201S  = {latitude:44.9763315, longitude:-93.268188};   // #14
+var Washington300N   = {latitude:44.984393,  longtiude:-93.272505};   // #14
+var Washington500N   = {latitude:44.978711,  longitude:-93.262360};   // #14
+
+var BroadwayEmerson  = {latitude:44.999164,  longitude:-93.294136};   // #14
+var PlymouthWashington = {latitude:44.992010,longitude:-93.281476};   // #14
+var FifthStBusRamp   = {latitude:44.980832,  longitude:-93.275425};   // #14
+var SixthNicollet    = {latitude:44.977802,  longitude:-93.271305};
+
+var myRoute = 14;
+var myDirection = 1;
+
+var route14QueriedAt = new Date(2015,1,1);
+var route7QueriedAt = new Date(2015,1,1);
+var route133QueriedAt = new Date(2015,1,1);
+
+if(Modernizr.localstorage) {
+	var p =  getDbValue("RouteDirectionStopActive");
+	if(p != null) {
+		var rdsa = JSON.parse(p);
+		getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
+	}
+	
+	resetRecentButtons();
+}
+
+</script>
+</body>
+</html> 
