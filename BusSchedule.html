@@ -3,25 +3,11 @@
 <head>
 	<meta charset="utf-8">
 
-<!-- copied from WC3, is this sufficient? no, it fails without modernizer.js still not enough the direction buttons never appear -->
-<!--  this fails
-  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
--->
-
-<!-- this works 
-	<link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
-	<script src="./modernizr/modernizr.js" ></script>
-	<script src="./jquery/jquery-2.1.4.js" ></script>
-	<script src="./bootstrap/js/bootstrap.min.js" ></script>
--->
-
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 	
-	<script src='https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js' type='text/javascript'></script>
+	<script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js'></script>
 	<script type='text/javascript'>
-		window.Modernizr || document.write('<script src="modernizr/modernizr.js">\x3C/script>')
+		window.Modernizr || document.write('<script src="modernizr/modernizr.js">\x3C/script>');
 	</script>
 	
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
@@ -29,19 +15,19 @@
 	<script>if (typeof jQuery === 'undefined') {
 	  document.write(unescape("%3Cscript src='jquery/jquery-2.1.4.js' type='text/javascript'%3E%3C/script%3E"));
 	}
-	</script>	
-
-	<!-- another form of loads from local if not available -->
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-	<script>    $.fn.modal || document.write('<script src="bootstrap/js/bootstrap.min.js">\x3C/script>')</script>
+	</script>
 
 	<style>
 @keyframes greenToRed {
     0%   {background-color: green;}
-    25%  {background-color: green;}
-    40%  {background-color: yellow;}
-    50% {background-color: red;}
-    51% {background-color: orange;}
+    45%  {background-color: green;}
+    50%  {background-color: yellow;}
+    52%  {background-color: gold;}
+    70%  {background-color: gold;}
+    75% {background-color: red;}
+    77% {background-color: darkred;}
+    93% {background-color: darkred;}
+    95% {background-color: dodgerblue;}
     100% {background-color: blue;}
 }
 div#id00C button.btn.btn-primary {
@@ -54,13 +40,7 @@ div#id00C button.btn.btn-primary {
 
 <script type="text/javascript">
 
-var version = '20170331_0912';
-
-// button animation  green to yellow to red to blue at 30sec, 45sec, 1min  (20160708 done)
-
-// angle in degrees  (20160704 done)
-
-// display the current time that the data was retrieved   (20160319 done)
+var version = '20170410_0811';
 
 // improvements
 //          Home or Office
@@ -68,10 +48,6 @@ var version = '20170331_0912';
 //                        --        2 -- 
 //                   Office -- Option 1 -- 
 //
-//     StopBeyond - query the stop beyond to see if you just missed it, or the data was dropped.
-//     StopObject - StopNumber, Route, Direction, GPS coordinates, StopBeyond
-//                  should be able to simplify multiple declarations of "http://svc.metrotransit.org/NexTrip/17884?format=json"
-
 // to use the url that is stop specific, there is a need to tie into the data updated weekly at: http://datafinder.org/metadata/transit_schedule_google_feed.html
 //        a zip file containing
 //             routes.txt	route_id
@@ -85,12 +61,6 @@ var version = '20170331_0912';
 //                           stop_name
 //                           stop_lat
 //                           stop_lon
-//  all this to present a user with a list of stops on a particular route?  No - stop_times.txt may not be defined.  No wonder you're expected to use Google Maps to locate the bus stop #!
-//
-//  miles column, should show the direction letter -- done
-//  provide a stop description to go along with the text "14 - N - BL54"  -- done
-//
-//  133 route often loses the row after the bus leaves Gateway, but before it arrives at 4th & Marquette.   Keep the row in memory.  For 10 minutes?  Why does it disappear?
 //
 //  Workflow of Route -> Direction -> Scheduled Stop  can leave the user confused.  Especially the Route -> Direction step, when NORTHBOUND SOUTHBOUND disappear one row above the "Route - Direction - Stop" button.
 //        all are Blue.
@@ -106,7 +76,7 @@ Date.prototype.toHHMMSS = function () {
 
 function showBusLocation2(route, blockNumber) {
 	var xmlhttp8 = new XMLHttpRequest();
-	var url8 = "https://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
+	var url8 = "http://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
 
 	// console.log("url8=" + url8);
 	
@@ -129,7 +99,7 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 			var newValue = "{\"direction\":" + arr[i].Direction + ", \"locationTime\":\"" + arr[i].LocationTime + "\", \"latitude\":" + arr[i].VehicleLatitude + ", \"longitude\":" + arr[i].VehicleLongitude + "}";
 
 			setDbValue("VehicleLocation." + route + "." + blockNumber, newValue);
-			// console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
+			console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
 
 			rewriteActualTableData(route, blockNumber);
 			return;
@@ -147,6 +117,8 @@ function rewriteActualTableData(route, blockNumber) {
 	var s = "";
 	var busLastAt = JSON.parse(getDbValue("VehicleLocation." + route + "." + blockNumber));
 	var busLocationTime = fromDateString(busLastAt.locationTime);
+	
+	addMarker({"route":route, "blockNumber":blockNumber, "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
 	
 	var now = new Date();
 	var timezoneOffsetInMinutes = now.getTimezoneOffset();
@@ -215,7 +187,7 @@ function selectRoute() {
 	}
 
 	var xmlhttp3 = new XMLHttpRequest();
-	var url3 = "https://svc.metrotransit.org/NexTrip/Routes?format=json";
+	var url3 = "http://svc.metrotransit.org/NexTrip/Routes?format=json";
 
 	xmlhttp3.onreadystatechange=function() {
 		if (xmlhttp3.readyState == 4 && xmlhttp3.status == 200) {
@@ -230,20 +202,17 @@ function selectRoute() {
 function populateRoutes(responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	var out = '<div id="routeButtonGroup" class="btn-group btn-group-sm" >';
+	var out = '<div id="routeButtonGroup" class="btn-group btn-group-md-1" >';
+	var j = 0;
     for(i = 0; i < arr.length; i++) {
 		out += '<button type="button" class="btn btn-primary col-md-1" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
-		// arr[i].Description +
-		// arr[i].ProviderID +
-		// arr[i].Route +
 	}
     out += "</div>";
     document.getElementById("id00A").innerHTML = out;
 	document.getElementById("id00A").style.display = "block";
 }
 
-
-
+// handle the routeButtonGroup click
 $('#routeButtonGroup button').click(function() {
     $(this).addClass('active').siblings().removeClass('active');
 
@@ -252,11 +221,22 @@ $('#routeButtonGroup button').click(function() {
 });
 
 function busNumberClicked(blockNumber) {
+	if(myBlockNumber = blockNumber) {
+		console.log("busNumberClicked  myBlockNumber=" + myBlockNumber + " blockNumber=" + blockNumber);
+		showBusLocation2(myRoute, blockNumber);
+		if(map == null) {
+			var stop = getDbValue("Stop." + myStop);
+			if(stop != null) {
+				var stopMine = JSON.parse(stop);
+				initializeMap2(stopMine);
+				console.log("busNumberClicked line 280, stopMine=" + stopMine + " initializeMap2 called.");
+			}
+		}
+		return;
+	}
+
 	myBlockNumber = blockNumber;
 	// set a timeout for when to stop tracking the bus by BlockNumber.
-	// myBlockNumberTimeout = new Date();
-	// myBlockNumberTimeout = myBlockNumberTimeout.setTime(myBlockNumberTimeout.getTime() + 30);
-	
 	//                                                         20 minutes from now
 	myBlockNumberTimeout = (new Date((new Date()).getTime() + (20 * 60 * 1000)))
 	// save the current row's info, so it can be used to populate the missing row.
@@ -268,48 +248,28 @@ function busNumberClicked(blockNumber) {
 			var i;
 			for(i = 0; i < arr.length; i++) {
 				if(arr[i].BlockNumber == blockNumber) {
-					// deleteDbKeysStartingWith("VehicleTracked.")
-				
 					console.log("busNumberClicked  i=" + i + " blockNumber=" + blockNumber);
-					// create a javascript object to save to the local storage
-					// target:  {"Actual":true,"BlockNumber":1420,"DepartureText":"2 Min","DepartureTime":"\/Date(1447453380000-0600)\/","Description":"Ltd Stop\/Bloomington\/Chicago Av","Gate":"","Route":"133"
-					//           ,"RouteDirection":"SOUTHBOUND","Terminal":"","VehicleHeading":0,"VehicleLatitude":44.975304,"VehicleLongitude":-93.272116}
+
+					var newValue = JSON.stringify(arr[i]);	
+					var isOk = setDbValue("VehicleTracked." + blockNumber, newValue);
+					console.log("busNumberClicked  setDbValue VehicleTracked." + blockNumber + " isOk=" + isOk + "  newValue=" + newValue);
 					
-//					var newValue = '{\"Actual\":' + arr[i].Actual;
-//					console.log(newValue);	
-
-//					newValue += ', \"BlockNumber\":' + arr[i].BlockNumber; 
-//					console.log(newValue);	
-
-//					newValue += ', \"DepartureText\":\"' + 'overdue'                + /* arr[i].DepartureText + */ '\"'
-//						+ ', \"DepartureTime\":\"' + '\/Date(1447453380000-0600)\/' + /* arr[i].DepartureTime + */ '\"'
-//						+ ', \"Description\":\"' + arr[i].Description + '\"'
-//						+ ', \"Gate\":\"' + arr[i].Gate + '\"'
-//						+ ', \"Route\":\"' + arr[i].Route + '\"'
-//					console.log(newValue);	
-						
-//					newValue += ', \"RouteDirection\":\"' + arr[i].RouteDirection + '\"'
-//						+ ', \"Terminal\":\"' + arr[i].Terminal + '\"'
-//						+ ', \"VehicleHeading\":' + arr[i].VehicleHeading
-//						+ ', \"VehicleLatitude\":' + arr[i].VehicleLatitude
-//						+ ', \"VehicleLongitude\":' + arr[i].VehicleLongitude
-//						+ '\"}';
-//					console.log(newValue);	
-						
-					var newValue2 = JSON.stringify(arr[i]);	
-//					// var isOk = setDbValue("VehicleTracked." + blockNumber, newValue);
-					var isOk = setDbValue("VehicleTracked." + blockNumber, newValue2);
-					console.log("setDbValue VehicleTracked." + blockNumber + " isOk=" + isOk + "  newValue2=" + newValue2);
+					if(map == null) {
+						var stop = getDbValue("Stop." + myStop);
+						if(stop != null) {
+							var stopMine = JSON.parse(stop);
+							initializeMap2(stopMine);
+							console.log("busNumberClicked, stopMine=" + stopMine + " initializeMap2 called.");
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-
 function routeClicked(route) {
 	myRoute = route;
-	document.getElementById("idRoute").innerHTML = '<button type="button" class="btn btn-primary btn-lg" onclick="routeClicked(' + route + ')" >' + route + '</button>';
 	selectRouteDirections(route);
 }
 
@@ -332,7 +292,7 @@ function selectRouteDirections2(route, shouldCreateButton) {
 	}
 
 	var xmlhttp4 = new XMLHttpRequest();
-	var url4 = "https://svc.metrotransit.org/NexTrip/Directions/" + route + "?format=json";
+	var url4 = "http://svc.metrotransit.org/NexTrip/Directions/" + route + "?format=json";
 	
 	// [{"Text":"NORTHBOUND","Value":"4"},{"Text":"SOUTHBOUND","Value":"1"}]
 	// 1 = South, 2 = East, 3 = West, 4 = North.
@@ -365,20 +325,6 @@ function populateRouteDirections(route, responseText) {
 function routeDirectionClicked(route, direction) {
 	myRoute = route;
 	myDirection = direction;
-	
-	var directionAsText = '';
-	if (direction == 1) { 
-		directionAsText = "South";
-	} else if (direction == 4) { 
-		directionAsText = "North"; 
-	} else if (direction == 3) { 
-		directionAsText = "West";
-	} else if (direction == 2) {
-		directionAsText = "East";
-	}
-		
-	document.getElementById("idDirection").innerHTML = '<button type="button" class="btn btn-primary btn-lg" onclick="selectRouteDirectionStops(' + route + ', ' + direction + ')" >' + directionAsText + '</button>';	
-	
 	// console.log("myRoute=" + myRoute);
 	// console.log("myDirection=" + myDirection);
  	selectRouteDirectionStops(route, direction);
@@ -402,7 +348,7 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 	}
 
 	var xmlhttp5 = new XMLHttpRequest();
-	var url5 = "https://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
+	var url5 = "http://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
 
 	xmlhttp5.onreadystatechange=function(shouldCreateButtons) {
 		if (xmlhttp5.readyState == 4 && xmlhttp5.status == 200) {
@@ -420,8 +366,7 @@ function populateRouteDirectionStops(route, direction, responseText) {
 	var arr = JSON.parse(responseText);
     var i;
 	// var out = '<div id="routeDirectionStopButtonGroup" class="btn-group btn-group-sm" >';
-	// var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
-	var out = '<div id="routeDirectionStopButtonGroup" >';
+	var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
     for(i = 0; i < arr.length; i++) {
 		// out += '<button type="button" class="btn btn-primary col-md-6 col-sm-4" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
 		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
@@ -440,14 +385,6 @@ function routeDirectionStopClicked(route, direction, stop) {
 	// console.log("myRoute=" + myRoute);
 	// console.log("myDirection=" + myDirection);
 	// console.log("myStop=" + myStop);
-	
-	var stopAsText = '' + stop;
-	var stopDescription = getStopDescription(route, direction, stop);
-	var buttonInnerHtml = '<button type="button" class="btn btn-primary btn-lg" onclick="getDepartures(' + route + ', ' + direction + ', &quot;' + stopAsText + '&quot; )" > ' + stopDescription + '</button>';
-	
-	// console.log("buttonInnerHtml=" + buttonInnerHtml);
-	document.getElementById("idStop").innerHTML = buttonInnerHtml;
-	
  	getDepartures(route, direction, stop);
 }
 
@@ -456,8 +393,8 @@ function getDepartures(route, direction, stop) {
 	//  Sensitive to whether the stop has times scheduled
 
 	var xmlhttp6 = new XMLHttpRequest();
-	var url6 = "https://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
-	console.log("url6=" + url6);
+	var url6 = "http://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
+	// console.log("url6=" + url6);
 	
 	xmlhttp6.onreadystatechange=function() {
 		if (xmlhttp6.readyState == 4 && xmlhttp6.status == 200) {
@@ -504,17 +441,22 @@ function populateDepartures(route, direction, stop, responseText) {
 				if(p != null) {
 					var pI = JSON.parse(p);
 
-					var milesAndDirectionLetter = "";
-					if(targetPoint != null && pI != null && pI.VehicleLatitude != null && pI.VehicleLatitude != "0") {
-						var busAtPoint = {"latitude": pI.VehicleLatitude, "longitude": pI.VehicleLongitude};
-						var milesAway = miles(busAtPoint, targetPoint);	
-						milesAndDirectionLetter = milesAndDirection(milesAway);
+					var milesAndDirectionLetter = " ? ";
+					
+					// pI will have a stale version of the row
+					//     getDbValue("VehicleLocation.14.1350")    VehicleLocation.14.1350={"direction":1, "locationTime":"/Date(1491594644000-0500)/", "latitude":44.97766, "longitude":-93.27093}
+					var vT = getDbValue("VehicleLocation." + route + "." + myBlockNumber);
+					if(vT != null) {
+						var vTI = JSON.parse(vT);
+
+						if(targetPoint != null && vTI != null && vTI.latitude != null && vTI.latitude != "0") {
+							var busAtPoint = {"latitude": vTI.latitude, "longitude": vTI.longitude};
+							var milesAway = miles(busAtPoint, targetPoint);	
+							milesAndDirectionLetter = milesAndDirection(milesAway);
+						}
 					}
 
-					out += '<tr class="table-row">' + 
-					((pI.Actual == null || !pI.Actual) ? '<td>' : '<td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >') + 
-					pI.Actual +
-					'</td><td>' +
+					out += '<tr class="table-row">' + '<td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
 
 					pI.Route + pI.Terminal +
 					"</td><td>" +
@@ -526,7 +468,6 @@ function populateDepartures(route, direction, stop, responseText) {
 					"</td><td>" +
 					((milesAndDirectionLetter != "") ? milesAndDirectionLetter :(pI.VehicleLatitude == null || pI.VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(pI)) +
 					"</td></tr>";
-
 				}
 			}
 		}
@@ -534,7 +475,7 @@ function populateDepartures(route, direction, stop, responseText) {
 	
 	console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
 	
-    for(i = 0; i < arr.length; i++) {
+    for(i = 0; (i < arr.length) && (i < 5); i++) {
 		if(!isValid && arr[i] != null && arr[i].VehicleLatitude != null) {
 			isValid = true;
 		}
@@ -604,20 +545,12 @@ function populateDepartures(route, direction, stop, responseText) {
     document.getElementById("title1").innerHTML = "Bus Schedule " + route;
     document.getElementById("id00B").innerHTML = out;
 	
-	// 1 South, 2 East, 3 West, 4 North
-	// console.log("direction=" + direction);
-	var directionAsString = ((direction == 1) ? "S" : (direction == 2) ? "E" : (direction == 3) ? "W" : (direction == 4) ? "N" : "?");
-	
-	// var outButton = "<div class=\"row\"><button type=\"button\" class=\"btn btn-primary col-md-6 col-sm-4\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString + " - " + stop + "</button></div>";
-	var outButton = "<button type=\"button\" class=\"btn btn-primary\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString + " - " + stop + "</button>";
+	var outButton = "<button type=\"button\" class=\"btn btn-primary\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString(direction) + " - " + stop + "</button>";
 	
 	var timeOfQuery = new Date();
-	// outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toTimeString().toHHMMSS() + '</label>';
-	// outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.getTime().secondsToHms() + '</label>';
 	outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
 	
     document.getElementById("id00C").innerHTML = outButton;
-	// document.getElementById("id00A").innerHTML = "&nbsp;";
 	
 	if(hasActuals) {
 		showBusLocation2(route, actualBlockNumber);
@@ -626,13 +559,6 @@ function populateDepartures(route, direction, stop, responseText) {
 
 function getStopDescription(route, direction, stop) {
 	if(Modernizr.localstorage) {
-	
-//	var arr = JSON.parse(responseText);
-//    var i;
-//    for(i = 0; i < arr.length; i++) {
-//		console.log(arr[i]);
-//		if(arr[i].Route == route && arr[i].BlockNumber == blockNumber) {
-	
 		var p =  getDbValue("RouteDirectionStops." + route + "." + direction);
 		if(p != null) {
 			var stops = JSON.parse(p);
@@ -645,8 +571,6 @@ function getStopDescription(route, direction, stop) {
 	}
 	return "";
 }
-
-
 
 function rotateRecentRoutes() {
 	// assumes that the new value RouteDirectionStopActive has been set
@@ -706,13 +630,19 @@ function resetRecentButtons() {
 			document.getElementById("recent" + i).hidden = false;
 			document.getElementById("recent" + i).classList.remove("hidden");
 			var recentStop = JSON.parse(recentValue);
-			var directionAsString = ((recentStop.direction == 1) ? "S" : (recentStop.direction == 2) ? "E" : (recentStop.direction == 3) ? "W" : (recentStop.direction == 4) ? "N" : "?");
 			
 			//	<li id="recent0" onclick="selectRecent(0);">&nbsp;</li>
-			var outListItem = recentStop.route + " - " + directionAsString + " - " + recentStop.stop;
+			var outListItem = recentStop.route + " - " + directionAsString(recentStop.direction) + " - " + recentStop.stop;
 			document.getElementById("recent" + i).innerHTML = outListItem;			
 		}
 	}
+}
+
+// example: var s = directionAsString(recentStop.direction);
+function directionAsString(direction) {
+	// 1 South, 2 East, 3 West, 4 North
+	// console.log("directionAsString()  direction=" + direction);
+	return ((direction == 1) ? "S" : (direction == 2) ? "E" : (direction == 3) ? "W" : (direction == 4) ? "N" : "?");
 }
 
 function selectRecent(item) {
@@ -722,190 +652,6 @@ function selectRecent(item) {
 		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
 	}
 }
-
-function changeRoute(routeNumber) {
-	var radioButtonName = "radio" + routeNumber;
-	document.getElementById("radio14").checked = (radioButtonName == "radio14");
-	document.getElementById("radio133").checked = (radioButtonName == "radio133");
-	document.getElementById("radio7").checked = (radioButtonName == "radio7");
-
-	myRoute = routeNumber;
-    document.getElementById("title1").innerHTML = "Bus Schedule " + myRoute;	
-	
-	if(routeNumber == 14 && timeSince(route14QueriedAt)._seconds < 30) {
-		alert("30 seconds have not elapsed");
-		return;
-	}
-	if(routeNumber == 7 && timeSince(route7QueriedAt)._seconds < 30) {
-		alert("30 seconds have not elapsed");
-		return;
-	}
-	if(routeNumber == 133 && timeSince(route133QueriedAt)._seconds < 30) {
-		alert("30 seconds have not elapsed");
-		return;
-	}
-
-	var xmlhttp2 = new XMLHttpRequest();
-	var url2 = "http://svc.metrotransit.org/NexTrip/17884?format=json";
-	
-	if(routeNumber == 14) {
-		url2 = "http://svc.metrotransit.org/NexTrip/17884?format=json";
-	}
-	if(routeNumber == 133) {
-		url2 = "http://svc.metrotransit.org/NexTrip/53288?format=json";
-	}
-	if(routeNumber == 7) {
-		url2 = "http://svc.metrotransit.org/NexTrip/44062?format=json";
-	}
-
-	xmlhttp2.onreadystatechange=function() {
-		if (xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
-			var myArr = JSON.parse(xmlhttp2.responseText);
-			myFunction(myArr);
-		}
-	}
-	xmlhttp2.open("GET", url2, true);
-	xmlhttp2.send();
-
-    document.getElementById("id01").innerHTML = "<p>Waiting for data . . .</p>";
-}
-
-function myFunction(arr) {
-    // var arr = JSON.parse(response);
-    var i;
-    // var out = "<table border=\"1\"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Block</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th><th>Miles</th></tr>";
-	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Milestone</th><th>Miles</th></tr>";
-	var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
-
-	// alert("myFunction(arr)");
-	
-    for(i = 0; i < arr.length; i++) {
-		if(   (myRoute==14 && arr[i].Route=="14" && arr[i].Terminal != "E")
-		   || (myRoute==133 && arr[i].Route=="133")
-		   || (myRoute==7 && arr[i].Route=="7" && arr[i].Terminal == "E")   ) {
-		   
-// 		if(arr[i].Route=="14" && arr[i].Terminal != "E" ) {
-			out += "<tr><td>" +
-			arr[i].Actual +
-			"</td><td>" +
-			arr[i].Route + arr[i].Terminal +
-			"</td><td>" +
-			arr[i].DepartureText +
-			"</td><td>" +
-			arr[i].Description +
-//			"</td><td>" +
-//			arr[i].RouteDirection +
-//			"</td><td>" +
-//			((arr[i].BlockNumber == null) ? "&nbsp;" : arr[i].BlockNumber) +
-//			"</td><td>" +
-//			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : arr[i].VehicleLatitude + ", " + arr[i].VehicleLongitude ) +
-//			"</td><td>" +
-// capella tower
-//			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distance(arr[i].VehicleLatitude, arr[i].VehicleLongitude, 44.9763315, -93.268188) ) +
-			"</td><td>" +
-			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : passedMilestone(arr[i]).simple) +
-			"</td><td>" +
-			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
-			"</td></tr>";
-		}
-    }
-    out += "</table>"
-	out += "<pre>" + url + "</pre>";
-    document.getElementById("id01").innerHTML = out;
-
-	document.getElementById("id02").innerHTML = addResults(arr, myRoute);
-	
-	if(myRoute == 14) {
-		route14QueriedAt = new Date();
-		document.getElementById("querriedAt14").innerHTML = route14QueriedAt.toLocaleTimeString("en-US");
-	}
-	if(myRoute == 7) {
-		route7QueriedAt = new Date();
-		document.getElementById("querriedAt7").innerHTML = route7QueriedAt.toLocaleTimeString("en-US");;
-	}
-	if(myRoute == 133) {
-		route133QueriedAt = new Date();
-		document.getElementById("querriedAt133").innerHTML = route133QueriedAt.toLocaleTimeString("en-US");;
-	}
-	
-	if(myRoute == 7 || myRoute == 14 || myRoute == 133) {
-		// don't create another until "You are ready"
-		if (seconds_left == 30) {
-
-		if (typeof interval !== 'undefined') {
-			interval = null;
-		}
-
-		interval = setInterval(function() {
-				document.getElementById('timer_div').innerHTML = --seconds_left;
-
-				if (seconds_left <= 0)	{
-					document.getElementById('timer_div').innerHTML = 'You are ready';
-					clearInterval(interval);
-					seconds_left = 30;
-				}
-			}
-			, 1000);
-		}
-	}
-}
-
-function addResults(arr, myRoute) {
-    var i;
-    // var out = "<table border=\"1\"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Block</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th></tr>";
-    // var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Distance</th><th>Milestone</th><th>Miles</th></tr>";
-	var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Location</th><th>Milestone</th><th>Miles</th></tr>";
-
-	out += "<pre>" + (new Date()) + "</pre>";
-    out += "<table>"
-	       + "<tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Route Direction</th><th>Block Number</th>"
-	       + "<th>Gate</th><th>Location</th><th>Miles</th><th>Milestone</th><th>MilesAsString</th></tr>";
-
-    for(i = 0; i < arr.length; i++) {
-		var milesFrom = null;
-		if(!(arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0")) {
-			var point = {latitude:arr[i].VehicleLatitude, longitude:arr[i].VehicleLongitude};
-			var wayPoint = busStopWayPoint(arr[i]);
-
-			if(wayPoint != null) {
-				milesFrom = miles(point, wayPoint);
-			}
-		}
-		out += "<tr><td>" +
-			arr[i].Actual +
-			"</td><td>" +
-			arr[i].Route + arr[i].Terminal +
-			"</td><td>" +
-			arr[i].DepartureText +
-			"</td><td>" +
-			arr[i].Description +
-			"</td><td>" +
-			arr[i].RouteDirection +
-			"</td><td>" +
-			((arr[i].BlockNumber == null) ? "&nbsp;" : arr[i].BlockNumber) +
-			"</td><td>" +
-			((arr[i].Gate == null) ? "&nbsp;" : arr[i].Gate) +
-			"</td><td>" +
-			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : arr[i].VehicleLatitude + ", " + arr[i].VehicleLongitude ) +
-			"</td><td>" +
-			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
-			"</td><td>" +
-			((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : passedMilestone(arr[i]).detail) +
-			"</td><td>" +
-			((milesFrom == null) ? "&nbsp;" : milesAsString(milesFrom)) +
-			"</td></tr>";
-    }
-    out += "</table>"
-    return out + document.getElementById("id02").innerHTML;
-}
-
 
 // Where a = line point 1; b = line point 2; c = point to check against.
 //public bool isLeft(Point a, Point b, Point c){
@@ -1338,6 +1084,11 @@ function showDatabase() {
 	}
 }
 
+// console.log("localStorage size=" + getDbSize());	
+// -------------------------------- local storage -- end
+
+
+
 function visitAllRoutes() {
 	// to populate the local database with values that showDatabase() can use.
     if (!supports_html5_storage()) { 
@@ -1370,38 +1121,9 @@ function visitAllRoutes() {
 	}
 }
 
-// from https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition
-/*
-var options = {
-  enableHighAccuracy: true,
-  timeout: 5000,        // wait up to 5000 milliseconds
-  maximumAge: 30000     // milliseconds old or less, retrieve from cache.  0 to always get the latest position, never from cache
-};
-
-var currentDeviceGps;
-function success(pos) {
-  var crd = pos.coords;
-
-  currentDeviceGps = pos.coords;
-  
-  console.log('Your current position is:');
-  console.log(`Latitude : ${crd.latitude}`);
-  console.log(`Longitude: ${crd.longitude}`);
-  console.log(`More or less ${crd.accuracy} meters.`);
-};
-
-function error(err) {
-  console.warn(`ERROR(${err.code}): ${err.message}`);
-};
-*/
-
-/*
-function getGps() {
-	navigator.geolocation.getCurrentPosition(success, error, options);
-}
-*/
-
 // --------------------------------------------
+// from https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition
+// and
 // from https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation
 
 var currentDeviceGps;   // .coords of success callback of .getCurrentPosition
@@ -1420,23 +1142,29 @@ function getGps() {
 
 	currentDeviceGps = position.coords;
 	
-    output.innerHTML = '<p>Latitude is ' + latitude + '° <br>Longitude is ' + longitude + '°</p>';
+//    output.innerHTML = '<p>Latitude is ' + latitude + '° <br>Longitude is ' + longitude + '°</p>';
 
-    var img = new Image();
-    img.src = "https://maps.googleapis.com/maps/api/staticmap?center=" + latitude + "," + longitude + 
-		// "&zoom=13&size=300x300&sensor=false";
-		"&zoom=15&size=400x400";
-    output.appendChild(img);
+//    var img = new Image();
+//    img.src = "https://maps.googleapis.com/maps/api/staticmap?center=" + latitude + "," + longitude + 
+//		// "&zoom=13&size=300x300&sensor=false";
+//		// "&zoom=15&size=400x400";
+//		"&zoom=14&size=500x500";
+//   output.appendChild(img);
 	
 	console.log('Your current position is:');
 	console.log(`Latitude : ${currentDeviceGps.latitude}`);
 	console.log(`Longitude: ${currentDeviceGps.longitude}`);
 	console.log(`More or less ${currentDeviceGps.accuracy} meters.`);
 
-    document.getElementById("outLocation").innerHTML = 
-		'<p>Latitude: ' + currentDeviceGps.latitude + ' <br>Longitude: ' + currentDeviceGps.longitude + ' <br>Accuracy: ' + currentDeviceGps.accuracy + ' meters</p>'
-		+ document.getElementById("outLocation").innerHTML;
+//    document.getElementById("outLocation").innerHTML = 
+//		'<p>Latitude: ' + currentDeviceGps.latitude + ' <br>Longitude: ' + currentDeviceGps.longitude + ' <br>Accuracy: ' + currentDeviceGps.accuracy + ' meters</p>'
+//		+ document.getElementById("outLocation").innerHTML;
+	document.getElementById("outLocation").innerHTML = "<p>drawing map . . . </p>";
+    initializeMap();
+	document.getElementById("outLocation").innerHTML = "";
 	
+	//addMarker({"route":0, "blockNumber":"stop", "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
+
   }
 
   function error() {
@@ -1449,17 +1177,185 @@ function getGps() {
 	  maximumAge: 30000     // milliseconds old or less, retrieve from cache.  0 to always get the latest position, never from cache
 	};
   
-  
   output.innerHTML = "<p>Locating…</p>";
 
   navigator.geolocation.getCurrentPosition(success, error, options);
 }
 // --------------------------------------------
 
+// ----- create map and add markers ------ start
+// based on http://stackoverflow.com/questions/5319488/how-to-set-google-map-marker-by-latitude-and-longitude-and-provide-infomation-bu
+// fills the <div id="map_canvas"></div>
+var map;
+var markers = [];
 
+function initializeMap() { return initializeMap2(currentDeviceGps); }
 
-// console.log("localStorage size=" + getDbSize());	
+function initializeMap2(position) {
+	if(position == null || position.latitude == null) {return;}
+
+    var latlng = new google.maps.LatLng(position.latitude, position.longitude);
+    var myOptions = {
+        zoom: 14,   // stackoverflow version was set to 1
+        center: latlng,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    }
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+}
+
+function addMarker(busLocation) {
+	console.log("addMarker  busLocation=" + busLocation);
 	
+//    var current;
+//    if (myloc == 'usa') current = usa;
+//    else if (myloc == 'brasil') current = brasil;
+//    else if (myloc == 'argentina') current = argentina;
+    for (var i = 0; i < markers.length; i++)
+    if (busLocation.latitude === markers[i].position.lat() && busLocation.longitude === markers[i].position.lng()) return;
+
+	var current = new google.maps.LatLng(busLocation.latitude, busLocation.longitude);
+	
+    markers.push(new google.maps.Marker({
+        map: map,
+        position: current,
+        title: "" + busLocation.blockNumber
+    }));
+
+	// content: '<div>' + busLocation.time.toTimeString() + '</div>'
+    markers[markers.length - 1]['infowin'] = new google.maps.InfoWindow({
+        content: '<div>' + busLocation.time.toHHMMSS().substr(3,5) + '</div>'
+    });
+
+    google.maps.event.addListener(markers[markers.length - 1], 'click', function() {
+        this['infowin'].open(map, this);
+    });
+}
+// ----- create map and add markers ------ end
+
+function clearTracking() {
+	deleteDbKeysStartingWith("VehicleTracked.");
+	deleteDbKeysStartingWith("VehicleLocation.");
+	map = null;
+	markers = [];
+}
+
+
+</script>
+</head>
+
+<body>
+<nav role="navigation" class="navbar navbar-default navbar-static-top">
+	<div class="container">
+		<!-- Brand and toggle get grouped for better mobile display -->
+		<div class="navbar-header">
+			<button type="button" data-target="#navbarCollapse" data-toggle="collapse" class="navbar-toggle">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			</button>
+			<span class="navbar-brand" id="title1" >Bus Schedule</span>
+		</div>
+		<!-- Collection of nav links and other content for toggling -->
+		<div id="navbarCollapse" class="collapse navbar-collapse">
+			<ul class="nav navbar-nav">
+				<li class="active btn btn-default" onclick="selectRoute()">Route</li>
+				<li class="divider btn" />
+				<li id="recent0" class="active btn btn-default hidden" onclick="selectRecent(0);">&nbsp;</li>
+				<li id="recent1" class="active btn btn-default hidden" onclick="selectRecent(1);">&nbsp;</li>
+				<li id="recent2" class="active btn btn-default hidden" onclick="selectRecent(2);">&nbsp;</li>
+				<li id="recent3" class="active btn btn-default hidden" onclick="selectRecent(3);">&nbsp;</li>
+				<li id="recent4" class="active btn btn-default hidden" onclick="selectRecent(4);">&nbsp;</li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				<div class="dropdown">
+					<li class="btn btn-default dropdown-toggle" data-toggle="dropdown" >
+						Utils<span class="caret"></span>
+					</li>
+						<ul class="dropdown-menu" >
+							<li class="btn btn-danger" id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
+							<li class="divider"></li>
+							<li class="btn btn-warning" id="utilGetGps"        onclick="getGps()">Show my location</li>
+							<li class="btn btn-warning" id="utilClearTracking" onclick="clearTracking()">Clear tracking</li>
+							<li class="divider"></li>
+							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
+							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
+						</ul>
+				</div>
+			</ul>
+		</div>
+	</div>
+</nav>
+
+<div id="id00A"></div>
+<div id="separator" class="hr" style="display: none;" > 
+	<hr>
+</div>
+<div id="id00C"></div>
+<div id="id00B"></div>
+
+<div id="id01"></div>
+<div id="id02"></div>
+
+<hr>
+<div id="outLocation"></div>
+<div class="panel-group" id="accordionMap">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+	  <h4 class="panel-title">
+        <a data-toggle="collapse" data-parent="#accordionMap" href="#collapseMap">Map</a>
+      </h4>
+	</div>
+	<div id="collapseMap" class="panel-collapse collapse">
+	  <!-- <div id="out" class="panel-body">No map available</div> -->
+	  <div id="map_canvas" class="panel-footer" style="width: 500px; height: 500px"></div>
+	</div>
+  </div>
+</div>
+
+	<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<!--
+	<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+	<script type="text/javascript">    $.fn.modal || document.write('<script src="bootstrap/js/bootstrap.min.js">\x3C/script>')</script>
+-->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
+
+<script type="text/javascript">
+// global variables for location
+var Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
+
+var SouthAndWestOfGatewayRamp  = {latitude:44.9779802, longitude:-93.2642134};   //133  waypoint before Marquette and 4th
+var Washington300S     = {latitude:44.979682,  longitude:-93.264170};            // 133 bus is on the move
+var SWofWashington300S = {latitude:44.979299,  longitude:-93.263962};
+var GrantAnd35W        = {latitude:44.969878,  longitude:-93.269835};            //133  returning, still on 35W
+
+var FourthStreet215S = {latitude:44.978416,  longitude:-93.266661};   // #7
+var SixthStreet201S  = {latitude:44.9763315, longitude:-93.268188};   // #14
+var Washington300N   = {latitude:44.984393,  longtiude:-93.272505};   // #14
+var Washington500N   = {latitude:44.978711,  longitude:-93.262360};   // #14
+
+var BroadwayEmerson  = {latitude:44.999164,  longitude:-93.294136};   // #14
+var PlymouthWashington = {latitude:44.992010,longitude:-93.281476};   // #14
+var FifthStBusRamp   = {latitude:44.980832,  longitude:-93.275425};   // #14
+var SixthNicollet    = {latitude:44.977802,  longitude:-93.271305};
+
+var myRoute = 14;
+var myDirection = 1;
+var myStop = '';
+
+var myBlockNumber = 0;
+var myBlockNumberTimeout = new Date(2015,1,1);
+
+if(Modernizr.localstorage) {
+	var p =  getDbValue("RouteDirectionStopActive");
+	if(p != null) {
+		var rdsa = JSON.parse(p);
+		getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
+	}
+	
+	resetRecentButtons();
+}
+
 var testStopExists = getDbValue("Stop.11SM");
 if((testStopExists == null) && supports_html5_storage()) {
 	setDbValue("Stop.101B","{\"latitude\":45.1378,\"longitude\":-93.4133}");
@@ -2044,115 +1940,6 @@ if((testStopExists == null) && supports_html5_storage()) {
 	setDbValue("Stop.XE6A","{\"latitude\":44.9862,\"longitude\":-93.4512}");
 	setDbValue("Stop.XEGV","{\"latitude\":44.9991,\"longitude\":-93.3184}");
 }	
-
-// -------------------------------- local storage -- end
-</script>
-</head>
-
-<body>
-<nav role="navigation" class="navbar navbar-default navbar-static-top">
-	<div class="container">
-		<!-- Brand and toggle get grouped for better mobile display -->
-		<div class="navbar-header">
-			<button type="button" data-target="#navbarCollapse" data-toggle="collapse" class="navbar-toggle">
-				<span class="sr-only">Toggle navigation</span>
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-			</button>
-			<span class="navbar-brand" id="title1" >Bus Schedule</span>
-		</div>
-		<!-- Collection of nav links and other content for toggling -->
-		<div id="navbarCollapse" class="collapse navbar-collapse">
-			<ul class="nav navbar-nav">
-				<li class="active btn btn-default" onclick="selectRoute()">Route</li>
-				<li class="divider btn" />
-				<li id="recent0" class="active btn btn-default hidden" onclick="selectRecent(0);">&nbsp;</li>
-				<li id="recent1" class="active btn btn-default hidden" onclick="selectRecent(1);">&nbsp;</li>
-				<li id="recent2" class="active btn btn-default hidden" onclick="selectRecent(2);">&nbsp;</li>
-				<li id="recent3" class="active btn btn-default hidden" onclick="selectRecent(3);">&nbsp;</li>
-				<li id="recent4" class="active btn btn-default hidden" onclick="selectRecent(4);">&nbsp;</li>
-			</ul>
-			<ul class="nav navbar-nav navbar-right">
-				<div class="dropdown">
-					<li class="btn btn-default dropdown-toggle" data-toggle="dropdown" >
-						Utils<span class="caret"></span>
-					</li>
-						<ul class="dropdown-menu" >
-							<li class="btn btn-danger" id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
-							<li class="divider"></li>
-							<li class="btn btn-warning" id="utilGetGps"   onclick="getGps()">Show my location</li>
-							<li class="divider"></li>
-							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
-							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
-						</ul>
-				</div>
-			</ul>
-		</div>
-	</div>
-</nav>
-
-<div id="id00A"></div>
-<div id="separator" class="hr" style="display: none;" > 
-	<hr>
-</div>
-<div class="row">
-	<div id="idRoute"       class="col-xs-2 col-sm-2">&nbsp;</div>
-	<div id="idDirection"   class="col-xs-3 col-sm-4">&nbsp;</div>
-	<div id="idStop"        class="col-xs-7 col-sm-6">&nbsp;</div>
-</div>
-<div id="separator" class="hr" style="display: none;" > 
-	<hr>
-</div>
-<div id="id00C"></div>
-<div id="id00B"></div>
-
-<div id="id01"></div>
-<div id="id02"></div>
-
-<hr>
-<div id="out"></div>
-<div id="outLocation"></div>
-
-<script type="text/javascript">
-// global variables for location
-var Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
-
-var SouthAndWestOfGatewayRamp  = {latitude:44.9779802, longitude:-93.2642134};   //133  waypoint before Marquette and 4th
-var Washington300S     = {latitude:44.979682,  longitude:-93.264170};            // 133 bus is on the move
-var SWofWashington300S = {latitude:44.979299,  longitude:-93.263962};
-var GrantAnd35W        = {latitude:44.969878,  longitude:-93.269835};            //133  returning, still on 35W
-
-var FourthStreet215S = {latitude:44.978416,  longitude:-93.266661};   // #7
-var SixthStreet201S  = {latitude:44.9763315, longitude:-93.268188};   // #14
-var Washington300N   = {latitude:44.984393,  longtiude:-93.272505};   // #14
-var Washington500N   = {latitude:44.978711,  longitude:-93.262360};   // #14
-
-var BroadwayEmerson  = {latitude:44.999164,  longitude:-93.294136};   // #14
-var PlymouthWashington = {latitude:44.992010,longitude:-93.281476};   // #14
-var FifthStBusRamp   = {latitude:44.980832,  longitude:-93.275425};   // #14
-var SixthNicollet    = {latitude:44.977802,  longitude:-93.271305};
-
-var myRoute = 14;
-var myDirection = 1;
-var myStop = '';
-
-var myBlockNumber = 0;
-var myBlockNumberTimeout = new Date(2015,1,1);
-
-var route14QueriedAt = new Date(2015,1,1);
-var route7QueriedAt = new Date(2015,1,1);
-var route133QueriedAt = new Date(2015,1,1);
-
-if(Modernizr.localstorage) {
-	var p =  getDbValue("RouteDirectionStopActive");
-	if(p != null) {
-		var rdsa = JSON.parse(p);
-		getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
-	}
-	
-	resetRecentButtons();
-}
 
 </script>
 </body>
