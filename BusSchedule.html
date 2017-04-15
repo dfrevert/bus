@@ -40,7 +40,7 @@ div#id00C button.btn.btn-primary {
 
 <script type="text/javascript">
 
-var version = '20170411_1529';
+var version = '20170414_2036';
 
 // improvements
 //     map should not be populated if the MAP div is not visible.  If it is, the road map is never shown. DONE
@@ -227,7 +227,6 @@ $('#routeButtonGroup button').click(function() {
 function busNumberClicked(blockNumber) {
 	if(myBlockNumber == blockNumber) {
 		console.log("busNumberClicked  myBlockNumber=" + myBlockNumber + " blockNumber=" + blockNumber);
-		showBusLocation2(myRoute, blockNumber);
 		if(map == null) {
 			var stop = getDbValue("Stop." + myStop);
 			if(stop != null) {
@@ -236,6 +235,7 @@ function busNumberClicked(blockNumber) {
 				console.log("busNumberClicked line 280, stopMine=" + stopMine + " initializeMap2 called.");
 			}
 		}
+		showBusLocation2(myRoute, blockNumber);
 		return;
 	}
 
@@ -1090,7 +1090,7 @@ function getGps() {
   var output = document.getElementById("out");
 
   if (!navigator.geolocation){
-    output.innerHTML = "<p>Geolocation is not supported by your browser</p>";
+    output.innerHTML = "<p>Geolocation is not supported by this browser</p>";
     return;
   }
 
@@ -1100,29 +1100,18 @@ function getGps() {
 
 	currentDeviceGps = position.coords;
 	
-//    output.innerHTML = '<p>Latitude is ' + latitude + '° <br>Longitude is ' + longitude + '°</p>';
+//	console.log('Your current position is:');
+//	console.log(`Latitude : ${currentDeviceGps.latitude}`);
+//	console.log(`Longitude: ${currentDeviceGps.longitude}`);
+//	console.log(`More or less ${currentDeviceGps.accuracy} meters.`);
 
-//    var img = new Image();
-//    img.src = "https://maps.googleapis.com/maps/api/staticmap?center=" + latitude + "," + longitude + 
-//		// "&zoom=13&size=300x300&sensor=false";
-//		// "&zoom=15&size=400x400";
-//		"&zoom=14&size=500x500";
-//   output.appendChild(img);
-	
-	console.log('Your current position is:');
-	console.log(`Latitude : ${currentDeviceGps.latitude}`);
-	console.log(`Longitude: ${currentDeviceGps.longitude}`);
-	console.log(`More or less ${currentDeviceGps.accuracy} meters.`);
-
-//    document.getElementById("outLocation").innerHTML = 
-//		'<p>Latitude: ' + currentDeviceGps.latitude + ' <br>Longitude: ' + currentDeviceGps.longitude + ' <br>Accuracy: ' + currentDeviceGps.accuracy + ' meters</p>'
-//		+ document.getElementById("outLocation").innerHTML;
-	document.getElementById("outLocation").innerHTML = "<p>drawing map . . . </p>";
+//	document.getElementById("outLocation").innerHTML = "<p>drawing map . . . </p>";
     initializeMap();
 	document.getElementById("outLocation").innerHTML = "";
-	
-	//addMarker({"route":0, "blockNumber":"stop", "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
 
+	var spanOut = '<span class="text-warning">Latitude : ' + (currentDeviceGps.latitude + '        ').substring(0,8) + '  Longitude: ' + (currentDeviceGps.longitude + '        ').substring(0,8) + '</span>';
+
+    output.innerHTML = spanOut;
   }
 
   function error() {
@@ -1135,7 +1124,7 @@ function getGps() {
 	  maximumAge: 30000     // milliseconds old or less, retrieve from cache.  0 to always get the latest position, never from cache
 	};
   
-  output.innerHTML = "<p>Locating…</p>";
+  output.innerHTML = "Locating…";
 
   navigator.geolocation.getCurrentPosition(success, error, options);
 }
@@ -1276,12 +1265,12 @@ function clearTracking() {
 <div class="panel-group" id="accordionMap">
   <div class="panel panel-default">
     <div class="panel-heading btn-block" data-toggle="collapse" data-parent="#accordionMap" href="#collapseMap">Map
+	  <div id="out" class="label">No map available</div>
 	  <!-- <h4 class="panel-title"> -->
         <!-- <div class="btn-block" data-toggle="collapse" data-parent="#accordionMap" href="#collapseMap">Map</div> -->
 	  <!-- </h4> -->
 	</div>
 	<div id="collapseMap" class="panel-collapse collapse">
-	  <!-- <div id="out" class="panel-body">No map available</div> -->
 	  <div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
 	</div>
   </div>
