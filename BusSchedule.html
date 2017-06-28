@@ -80,6 +80,11 @@ var version = '20170625_1111';
 // ----------------------------- copied ---------- start
 
 function showStop(stopNumber) {
+	var testStopExists = getDbValue('o34');
+	if((testStopExists == null) && supports_html5_storage()) {
+		loadJavascript('stopOffsets.js');
+	}
+
 	saveNumberedBusStopInfo(stopNumber);
 
 	var xmlhttp2 = new XMLHttpRequest();
@@ -97,15 +102,44 @@ function showStop(stopNumber) {
 //    document.getElementById("id01").innerHTML = "<p>Waiting for data . . .</p>";
 }
 
+function loadJavascript(path) {
+	//// adapted from https://stackoverflow.com/questions/26331600/load-js-script-only-when-it-has-not-been-loaded-already-and-then-only-once
+	//let scripts = Array
+	//	.from(document.querySelectorAll('script'))
+	//	.map(scr => scr.src);
+		
+	var list = document.getElementsByTagName('script');
+	var i = list.length, flag = false;
+	while (i--) {
+		if (list[i].src === path) {
+			flag = true;
+			break;
+		}
+	}		
+
+	if (!flag) {
+	    var tag = document.createElement('script');
+		tag.src = path;
+		document.getElementsByTagName('body')[0].appendChild(tag);
+		loadNumberedBusStopData();		
+	}
+}
+
 function saveNumberedBusStopInfo(stopNumber) {
 	var activeNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
 	if(activeNumberedBusStopNumber != null && activeNumberedBusStopNumber.stopNumber == stopNumber) return;
 	
 	// lookup the stop offsets based on the 
-	var offsetForStop = JSON.parse(getDbValue("o" + stopNumber));
+	var oStopNumber = "o" + stopNumber;
+	var dbStopNumber = getDbValue(oStopNumber);
+	if(dbStopNumber == null) {
+		console.log("saveNumberedBusStopInfo(" + stopNumber + ") caused dbStopNumber to be null. Skipping.");
+		console.log("getDbValue(oStopNumber) returned null when oStopNumber=" + oStopNumber);
+		return;
+	}
+	var offsetForStop = JSON.parse(dbStopNumber);
 	if(offsetForStop == null) {
-		console.log("saveNumberedBusStopInfo(" + stopNumber + ") is null.");
-		
+		console.log("saveNumberedBusStopInfo(" + stopNumber + ") caused offsetForStop to be null. Skipping.");
 		return;
 	}
 	console.log("saveNumberedBusStopInfo(" + stopNumber + ") called, offsetForStop = " + JSON.stringify(offsetForStop));
@@ -258,11 +292,18 @@ function rewriteActualTableData(route, blockNumber) {
 
 	// ScheduledStop info
 	var busAtPoint = {"latitude": busLastAt.latitude, "longitude": busLastAt.longitude};
-	var activeRouteDirectionStop = JSON.parse(getDbValue("RouteDirectionStopActive"));
-	var activeStop = JSON.parse(getDbValue("Stop." + activeRouteDirectionStop.stop));
-
+	var dbRouteDirectionStopActive = getDbValue("RouteDirectionStopActive")
+	var activeRouteDirectionStop = null;
+	var activeStop = null;
+	if(dbRouteDirectionStopActive != null) {
+		activeRouteDirectionStop = JSON.parse(dbRouteDirectionStopActive);
+		if(activeRouteDirectionStop != null) {
+			activeStop = JSON.parse(getDbValue("Stop." + activeRouteDirectionStop.stop));
+		}
+	}
+	
 	var busStopPoint = null;
-	if(document.getElementById("Actual_" + route + "_" + blockNumber) != null) {
+	if((activeStop != null) && (document.getElementById("Actual_" + route + "_" + blockNumber) != null)) {
 		busStopPoint =  {"latitude": activeStop.latitude, "longitude": activeStop.longitude};
 	} else {
 		var activeNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
@@ -1152,7 +1193,7 @@ function deleteDbKeysStartingWith(prefix) {
 			i++;
 		}
 	} 
-	while (result != null)
+	while (result != null);
     return true;
 }
 
@@ -1614,7 +1655,7 @@ function clearTracking() {
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
 
 <script type='text/javascript' src='stopLocations.js'></script>
-<script type='text/javascript' src='stopOffsets.js'></script>
+<!-- <script type='text/javascript' src='stopOffsets.js'></script> -->
 
 <script type="text/javascript">
 // global variables for location
