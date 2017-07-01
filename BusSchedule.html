@@ -129,6 +129,7 @@ function saveNumberedBusStopInfo(stopNumber) {
 }
 
 function buildStopResults(arr) {
+	isCurrentTargetANumberedBusStop = true;
 
 	if(arr == null || arr.length == 0) {
 		var element = document.getElementById("id00B");
@@ -708,13 +709,20 @@ function populateDepartures(route, direction, stop, responseText) {
 		}
 		else {
 			setDbValue("RouteDirectionStopActive", newValue); // "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}");
+			// setDbValue("ActiveScheduledBusStop", ...);
+			var rawStop = getDbValue("Stop" + stop);
+			if(rawStop != null) {
+				var stopParsed = JSON.parse(rawStop);
+				if(stopParsed != null) {
+					var busStopPoint = {"stop":stop, "latitude": stopParsed.latitude, "longitude": stopParsed.longitude};
+					setDbValue("ActiveScheduledBusStop", JSON.stringify(busStopPoint));
+				}
+			}
 			rotateRecentRoutes();
 		}
 		document.getElementById("separator").style.display = "none";
 		document.getElementById("id00RouteDirectionStop").style.display = "none";
-
 	}
-
 
     document.getElementById("title1").innerHTML = "Bus Schedule " + route;
     document.getElementById("id00B").innerHTML = out;
@@ -877,11 +885,23 @@ function busStopWayPoint(arrRow) {
 
 function distanceInMiles(arrRow) {
 	var busAtPoint = {latitude:arrRow.VehicleLatitude, longitude:arrRow.VehicleLongitude};
-	if(typeof targetPoint !== 'undefined') {
-		if(targetPoint != null) {
-			return distanceNearLatitude45(busAtPoint, targetPoint); 
-		}
-	} 
+
+	var activeStop;
+	if(isCurrentTargetANumberedBusStop) {
+		activeStop = getDbValue("ActiveNumberedBusStop");
+	}
+	else {
+		activeStop = getDbValue("ActiveScheduledBusStop");
+	}
+
+	var targetPoint;
+	if(activeStop != null) {
+		targetPoint = JSON.parse(activeStop);
+	}
+	
+	if(targetPoint != null) {
+		return distanceNearLatitude45(busAtPoint, targetPoint); 
+	}
 	
 	if(arrRow.Route=="133") {
 		return distanceNearLatitude45(busAtPoint, Marquette400S);  //400 S Marquette
@@ -1555,6 +1575,15 @@ function clearTracking() {
 		  var form = document.getElementById("busStopForm");
 		  form.addEventListener("submit", function(event) {
 			event.preventDefault();
+			if(getDbValue("o34") == null) {
+				loadNumberedBusStopData();
+			}
+			if(getDbValue("o" + form.elements.stopNumber.value) == null) {
+				// show a validation error
+				alert("stop number not found.");
+				return;
+			}
+			
 			console.log("Saving value", form.elements.stopNumber.value);
 			//var newValue = "{\"stopNumber\":\"" + form.elements.stopNumber.value + "\"}";
 			var newValue = '{"stopNumber":"' + form.elements.stopNumber.value + '", "description":"' + form.elements.stopDescription.value + '"}';
@@ -1609,6 +1638,8 @@ var myStop = '';
 
 var myBlockNumber = 0;
 var myBlockNumberTimeout = new Date(2015,1,1);
+
+var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus stop
 
 if(Modernizr.localstorage) {
 	var p =  getDbValue("RouteDirectionStopActive");

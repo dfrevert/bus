@@ -1,3 +1,5 @@
+"use strict";
+
 function loadNumberedBusStopData() {
 	var testStopExists = getDbValue("o34");
 	if((testStopExists == null) && supports_html5_storage()) {
