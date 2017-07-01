@@ -541,7 +541,7 @@ function populateRouteDirectionStops(route, direction, responseText) {
 	var id00Route = document.getElementById("id00RouteDirectionStop");
     id00Route.innerHTML = out;
 	id00Route.style.display = "block";
-	document.getElementById("separator").style.display = "block";
+	//document.getElementById("separator").style.display = "block";
 
 	$("#selectStopButton").addClass("active");	
 }
@@ -720,7 +720,7 @@ function populateDepartures(route, direction, stop, responseText) {
 			}
 			rotateRecentRoutes();
 		}
-		document.getElementById("separator").style.display = "none";
+//		document.getElementById("separator").style.display = "none";
 		document.getElementById("id00RouteDirectionStop").style.display = "none";
 	}
 
@@ -829,7 +829,7 @@ function directionAsString(direction) {
 }
 
 function selectRecent(item) {
-	itemValue = getDbValue("RouteDirectionStopActive." + item);
+	var itemValue = getDbValue("RouteDirectionStopActive." + item);
 	if(itemValue != null) {
 		var itemStop = JSON.parse(itemValue);
 		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
@@ -1524,14 +1524,23 @@ function clearTracking() {
 		</div>
 	</div>
 </nav>
-
+<!--
 <div id="separator" class="hr" style="display: none;" > 
 	<hr>
 </div>
-
-<div id="id00C"></div>
-<div id="id00B"></div>
+-->
 <div class="panel-group" id="accordionMap">
+
+  <div class="panel panel-default">
+	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
+    <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseDetails">Details</div>
+	<div id="collapseDetails" class="panel-collapse collapse in">
+	  <div id="detailsPanel" class="panel-body">
+		<div id="id00C"></div>
+		<div id="id00B"></div>
+	  </div>
+	</div>
+  </div>
 
   <div class="panel panel-default">
 	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
@@ -1602,6 +1611,9 @@ function clearTracking() {
 	  <div id="map_button" class="panel-body-sm map-title"></div>
 	  <div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
 	</div>
+  </div>
+
+  <div class="panel panel-danger panel-footer" style="background-color: grey;">
   </div>
   
 </div>
