@@ -122,14 +122,29 @@ function saveNumberedBusStopInfo(stopNumber) {
 	// 	setDbValue("o15574","{\"n\":2052,\"e\":9050}");
     var latitude = 0.0 + offsetForStop.n/10000.0 + 44.707146;
 	var longitude = 0.0 + offsetForStop.e/10000.0 - 94.157372;
-	var busStopPoint = {"stopNumber":stopNumber, "latitude": latitude, "longitude": longitude};
+	
+	// ActiveNumberedBusStop needs to include the description from the BusStopNumberEntered
+	var description = "";
+	var rawEntered = getDbValue("BusStopNumberEntered");
+	if(rawEntered != null) {
+		var entered = JSON.parse(rawEntered);
+		if(entered != null) {
+			description = entered.description;
+		}
+	}
+	
+	var busStopPoint = {"stopNumber":stopNumber, "latitude": latitude, "longitude": longitude, "description": description};
 	setDbValue("ActiveNumberedBusStop", JSON.stringify(busStopPoint));
-	var targetPoint = busStopPoint;
-	console.log("saved ActiveNumberedBusStopPoint");
+	
+	rotateRecentNumberedStops();
+//	var targetPoint = busStopPoint;
+//	console.log("saved ActiveNumberedBusStopPoint");
 }
 
 function buildStopResults(arr) {
 	isCurrentTargetANumberedBusStop = true;
+
+	$("#collapseDetails").collapse("show");
 
 	if(arr == null || arr.length == 0) {
 		var element = document.getElementById("id00B");
@@ -752,6 +767,83 @@ function getStopDescription(route, direction, stop) {
 		}
 	}
 	return "";
+}
+
+// comparable to selectRecent(item), which handles ScheduledStops, not NumberedStops
+function selectRecentNumberedStop(item) {
+	var itemValue = getDbValue("BusStopNumber" + item);
+	if(itemValue != null) {
+		var itemStop = JSON.parse(itemValue);
+		console.log('selectRecentNumberedStop(' + item + ') not null, itemValue=' + itemValue);
+//		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
+	}
+}
+
+function rotateRecentNumberedStops() {
+	var recent = null;
+	var recentRaw = getDbValue("ActiveNumberedBusStop");
+	if(recentRaw == null) { return; }
+
+	recent = JSON.parse(recentRaw);
+	if(recent == null) { return; }
+	
+	// is it already in the list? if so, only need to replace up to that one
+	var isAlreadyInTheList = false;
+	var matchBusStopNumber = null;
+	var matchIndex = -1;
+	var emptyIndex = -1;
+	for(var i=0; i < 5; i++) {
+		var stopIRaw = getDbValue("BusStopNumber" + i);
+		if(stopIRaw == null) {
+			if(emptyIndex == -1) {
+				emptyIndex = i;
+			}
+		} else {
+		    var stopI = JSON.parse(stopIRaw);
+			if((stopI != null) && (recent.stopNumber == stopI.stopNumber)) {
+				matchBusStopNumber = stopI;
+				matchIndex = i;
+				isAlreadyInTheList = true;
+			}
+		}
+	}
+	if(matchBusStopNumber != null) {
+		// found an existing (matchBusStopNumber) use (recent) to change matchBusStopNumber
+		matchBusStopNumber.description = recent.description;
+		setDbValue("BusStopNumber" + matchIndex, JSON.stringify(matchBusStopNumber));
+		
+		var recentIElement = document.getElementById("recentStop" + matchIndex);
+		recentIElement.hidden = false;
+		recentIElement.classList.remove("hidden");
+		recentIElement.innerHTML = recent.description;
+	} else {
+		if((matchIndex == -1) && (emptyIndex > -1)) {
+			// create new BusStopNumber
+			setDbValue("BusStopNumber" + emptyIndex, recentRaw);
+//			$("#recentStop" + emptyIndex).innerHTML = recent.description;
+//			$("#recentStop" + emptyIndex).removeClass("hidden");
+
+			var recentIElement = document.getElementById("recentStop" + emptyIndex);
+			recentIElement.hidden = false;
+			recentIElement.classList.remove("hidden");
+			recentIElement.innerHTML = recent.description;
+		} else {
+			// drop existing BusStopNumber   drop 0, copy 1 to 0, 2 to 1, ... 4 to 3, add in 4
+			for(var i=0; i < 5; i++) {
+				var tempRaw = getDbValue("BusStopNumber" + (i + 1));
+				var temp = JSON.parse(tempRaw);
+				setDbValue("BusStopNumber" + i, tempRaw);
+//				$("#recentStop" + i).innerHTML = temp.description;
+//				$("#recentStop" + i).removeClass("hidden");
+
+				var recentIElement = document.getElementById("recentStop" + i);
+				recentIElement.hidden = false;
+				recentIElement.classList.remove("hidden");
+				recentIElement.innerHTML = temp.description;
+
+			}
+		}
+	}
 }
 
 function rotateRecentRoutes() {
@@ -1499,11 +1591,11 @@ function clearTracking() {
 				<li id="recent3" class="active btn btn-default hidden" onclick="selectRecent(3);">&nbsp;</li>
 				<li id="recent4" class="active btn btn-default hidden" onclick="selectRecent(4);">&nbsp;</li>
 				<li class="divider btn hidden" />
-				<li id="recentStop0" class="active btn btn-default hidden" onclick="selectRecentStop(0);">&nbsp;</li>
-				<li id="recentStop1" class="active btn btn-default hidden" onclick="selectRecentStop(1);">&nbsp;</li>
-				<li id="recentStop2" class="active btn btn-default hidden" onclick="selectRecentStop(2);">&nbsp;</li>
-				<li id="recentStop3" class="active btn btn-default hidden" onclick="selectRecentStop(3);">&nbsp;</li>
-				<li id="recentStop4" class="active btn btn-default hidden" onclick="selectRecentStop(4);">&nbsp;</li>
+				<li id="recentStop0" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(0);">&nbsp;</li>
+				<li id="recentStop1" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(1);">&nbsp;</li>
+				<li id="recentStop2" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(2);">&nbsp;</li>
+				<li id="recentStop3" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(3);">&nbsp;</li>
+				<li id="recentStop4" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(4);">&nbsp;</li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<div class="dropdown">
@@ -1596,7 +1688,7 @@ function clearTracking() {
 			console.log("Saving value", form.elements.stopNumber.value);
 			//var newValue = "{\"stopNumber\":\"" + form.elements.stopNumber.value + "\"}";
 			var newValue = '{"stopNumber":"' + form.elements.stopNumber.value + '", "description":"' + form.elements.stopDescription.value + '"}';
-			setDbValue("BusStopNumber1", newValue);
+			setDbValue("BusStopNumberEntered", newValue);
 			// alert("interrupted the 'Submit' event.  stopNumber=" + form.elements.stopNumber.value);
 			showStop(form.elements.stopNumber.value);
 		  });
