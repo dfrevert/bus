@@ -43,41 +43,19 @@ div#id00C button.btn.btn-primary {
 
 var version = '20170704_1003';
 
-// improvements
-//     map should not be populated if the MAP div is not visible.  If it is, the road map is never shown. DONE
-//     map should include a marker for the named stop (or the gps location)
-//     stopLocations should be placed in a separate javascript file.  DONE
-//  
-//          Home or Office
-//                   Home -- Option 1 -- Route, Direction, Letter(E or C or N), StopNumber, StopBefore, StopAfter
-//                        --        2 -- 
-//                   Office -- Option 1 -- 
+// todo
+//     First time experience
+//         Open the Pick Route panel and the Enter Bus Stop panel
+//         Need a graphic to indicate where to find a Bus Stop number when at a bus stop
+//     SVG of a numbered bus stop, that includes the text
+//     Morning/Evening function for seasoned traveler
+//         Look at time of day and when first opening the app, use the appropriate setting.
 //
-// to use the url that is stop specific, there is a need to tie into the data updated weekly at: http://datafinder.org/metadata/transit_schedule_google_feed.html
-//        a zip file containing
-//             routes.txt	route_id
-//                          agency_id
-//             trips.txt   route_id
-//                         trip_id
-//                         direction_id (optional)
-//             stop_times.txt	trip_id
-//                              stop_id
-//             stops.txt     stop_id
-//                           stop_name
-//                           stop_lat
-//                           stop_lon
-//
-//  Workflow of Route -> Direction -> Scheduled Stop  can leave the user confused.  Especially the Route -> Direction step, when NORTHBOUND SOUTHBOUND disappear one row above the "Route - Direction - Stop" button.
-//        all are Blue.
-//
-//  table-responsive added
-//
-//  Latitude and longitude, how much accuracy is enough?     1 deg latitude at 45degrees is 364604.73335045605 ft.
+//  notes
+//      Latitude and longitude, how much accuracy is enough? 1 deg latitude at 45degrees is 364604.73 ft.
 //                                                           50ft is 1.37e-4 or .000137 degrees
-//                                                           1 deg longitude at 45deg    is 258683.22840902332 ft.
+//                                                           1 deg longitude at 45deg    is 258683.23 ft.
 //                                                           50ft is 1.93e-4 or .000193 degrees
-//
-//  reset map is also available as a button above the map graphic
 //
 function showStop(stopNumber) {
 	saveNumberedBusStopInfo(stopNumber);
@@ -95,11 +73,18 @@ function showStop(stopNumber) {
 	xmlhttp2.send();
 }
 
+function getActiveNumberedBusStop() {
+	var rawActiveNumberedBusStop = getDbValue("ActiveNumberedBusStop");
+	if(rawActiveNumberedBusStop != null) {
+		return JSON.parse(rawActiveNumberedBusStop);
+	}
+	return null;
+}
+
 function saveNumberedBusStopInfo(stopNumber) {
-	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-	if(rawActiveNumberedBusStopNumber != null) {
-		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
-		if(activeNumberedBusStopNumber != null && activeNumberedBusStopNumber.stopNumber == stopNumber) return;
+	var activeNumberedBusStop = getActiveNumberedBusStop();
+	if(activeNumberedBusStop != null && activeNumberedBusStop.stopNumber == stopNumber) {
+		return;
 	}
 	
 	// lookup the stop offsets based on the 
@@ -140,8 +125,6 @@ function saveNumberedBusStopInfo(stopNumber) {
 	setDbValue("ActiveNumberedBusStop", JSON.stringify(busStopPoint));
 	
 	rotateRecentNumberedStops();
-//	var targetPoint = busStopPoint;
-//	console.log("saved ActiveNumberedBusStopPoint");
 }
 
 function buildStopResults(arr) {
@@ -160,14 +143,7 @@ function buildStopResults(arr) {
 //	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
 	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
 
-	var targetPoint = null;
-	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-	if(rawActiveNumberedBusStopNumber != null) {
-		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
-		if(activeNumberedBusStopNumber != null) {
-			targetPoint = activeNumberedBusStopNumber;
-		}
-	}
+	var targetPoint = getActiveNumberedBusStop();
 	
     for(i = 0; i < arr.length; i++) {
 	
@@ -195,19 +171,14 @@ function buildStopResults(arr) {
     document.getElementById("id00B").innerHTML = out;
 	document.getElementById("id00B").style.display = "block";
 	
-	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-	if(rawActiveNumberedBusStopNumber != null) {
-		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
-		if(activeNumberedBusStopNumber != null) {
-			document.getElementById("title1").innerHTML = "Bus Schedule " + activeNumberedBusStopNumber.stopNumber;
-			
-			var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + activeNumberedBusStopNumber.stopNumber + ');" >' + activeNumberedBusStopNumber.stopNumber + ' - ' + activeNumberedBusStopNumber.description + '</button>';
-			
-			var timeOfQuery = new Date();
-			outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
-			
-			document.getElementById("id00C").innerHTML = outButton;
-		}
+	if(targetPoint != null) {
+		document.getElementById("title1").innerHTML = "Bus Schedule " + targetPoint.stopNumber;
+		
+		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + targetPoint.stopNumber + ');" >' + targetPoint.stopNumber + ' - ' + targetPoint.description + '</button>';
+		var timeOfQuery = new Date();
+		outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
+		
+		document.getElementById("id00C").innerHTML = outButton;	
 	}
 }
 
@@ -302,16 +273,16 @@ function rewriteActualTableData(route, blockNumber) {
 	}
 	
 	var busStopPoint = null;
-	if((activeStop != null) && (document.getElementById("Actual_" + route + "_" + blockNumber) != null)) {
-		busStopPoint =  {"latitude": activeStop.latitude, "longitude": activeStop.longitude};
+	if(isCurrentTargetANumberedBusStop) {
+		busStopPoint = getActiveNumberedBusStop();
 	} else {
-		var activeNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-		if(activeNumberedBusStopNumber == null) {
-			console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
-			return;
+		if((activeStop != null) && (document.getElementById("Actual_" + route + "_" + blockNumber) != null)) {
+			busStopPoint =  {"latitude": activeStop.latitude, "longitude": activeStop.longitude};
 		}
-		// set busStopPoint based on activeNumberedBusStopNumber
-		var busStopPoint = JSON.parse(activeNumberedBusStopNumber);
+	}
+	if(busStopPoint == null) {
+		console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
+		return;
 	}
 
 	var milesAway = miles(busAtPoint, busStopPoint);
@@ -400,12 +371,11 @@ function busNumberClicked2(blockNumber, routeNumber) {
 	myRoute = routeNumber;
 	
 	if(map == null) {
-		var stop = getDbValue("ActiveNumberedBusStop");
-		if(stop != null) {
-			var myNumberedStop = JSON.parse(stop);
-			console.log("busNumberClicked2 line 373, stop=" + stop + "  myNumberedStop=" + myNumberedStop + " calling initializeMap2.");
+		var targetStop = getActiveNumberedBusStop();
+		if(targetStop != null) {
+			console.log("busNumberClicked2 line 374, targetStop=" + JSON.stringify(targetStop) + "  calling initializeMap2(targetStop).");
 			myBlockNumber = blockNumber;
-			initializeMap2(myNumberedStop);
+			initializeMap2(targetStop);
 		}
 	}
 
@@ -422,7 +392,7 @@ function busNumberClicked(blockNumber) {
 			if(stop != null) {
 				var stopMine = JSON.parse(stop);
 				initializeMap2(stopMine);
-				console.log("busNumberClicked line 280, stopMine=" + stopMine + " initializeMap2 called.");
+				console.log("busNumberClicked line 280, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
 			}
 		}
 		showBusLocation2(myRoute, blockNumber);
@@ -818,11 +788,7 @@ function selectRecentNumberedStop(item) {
 }
 
 function rotateRecentNumberedStops() {
-	var recent = null;
-	var recentRaw = getDbValue("ActiveNumberedBusStop");
-	if(recentRaw == null) { return; }
-
-	recent = JSON.parse(recentRaw);
+	var recent = getActiveNumberedBusStop();
 	if(recent == null) { return; }
 	
 	// is it already in the list? if so, only need to replace up to that one
@@ -853,7 +819,7 @@ function rotateRecentNumberedStops() {
 	} else {
 		if((matchIndex == -1) && (emptyIndex > -1)) {
 			// create new BusStopNumber
-			setDbValue("BusStopNumber" + emptyIndex, recentRaw);
+			setDbValue("BusStopNumber" + emptyIndex, JSON.stringify(recent));
 			showRecentNumberedStop(emptyIndex, recent.description);
 		} else {
 			// drop existing BusStopNumber   drop 0, copy 1 to 0, 2 to 1, ... 4 to 3, add in 4
@@ -1028,17 +994,15 @@ function busStopWayPoint(arrRow) {
 function distanceInMiles(arrRow) {
 	var busAtPoint = {latitude:arrRow.VehicleLatitude, longitude:arrRow.VehicleLongitude};
 
-	var activeStop;
+	var targetPoint = null;
 	if(isCurrentTargetANumberedBusStop) {
-		activeStop = getDbValue("ActiveNumberedBusStop");
+		targetPoint = getActiveNumberedBusStop();
 	}
 	else {
-		activeStop = getDbValue("ActiveScheduledBusStop");
-	}
-
-	var targetPoint;
-	if(activeStop != null) {
-		targetPoint = JSON.parse(activeStop);
+		var activeStop = getDbValue("ActiveScheduledBusStop");
+		if(activeStop != null) {
+			targetPoint = JSON.parse(activeStop);
+		}
 	}
 	
 	if(targetPoint != null) {
@@ -1510,38 +1474,34 @@ function addMarkerForStop(stopNumber, blockNumber, rowId) {
 	var row = departuresByStopNumber[rowId];
 	var current = new google.maps.LatLng(row.VehicleLatitude, row.VehicleLongitude);
 	
-	var activeNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-	if(activeNumberedBusStopNumber != null) {
-		// has the numberedBusStop already been added to the markers?
-		var activeStop = JSON.parse(activeNumberedBusStopNumber);
-		if(activeStop != null) {
-			var isAlreadyAdded = false;
-			// where did markers come from? global variable
-			for (var i = 0; i < markers.length; i++) {
-				if (activeStop.latitude === markers[i].position.lat() && activeStop.longitude === markers[i].position.lng()) {
-					isAlreadyAdded = true;
-				}
+	var activeStop = getActiveNumberedBusStop();
+	if(activeStop != null) {
+		var isAlreadyAdded = false;
+		// where did markers come from? global variable
+		for (var i = 0; i < markers.length; i++) {
+			if (activeStop.latitude === markers[i].position.lat() && activeStop.longitude === markers[i].position.lng()) {
+				isAlreadyAdded = true;
 			}
-			if(!isAlreadyAdded) {
-				var latLngBusStop = new google.maps.LatLng(activeStop.latitude, activeStop.longitude);
-				var	marker = new google.maps.Marker({
-					map: map,
-					position: latLngBusStop,
-					icon: {
-						path: google.maps.SymbolPath.CIRCLE,
-						scale: 5
-						}
-				});
-				markers.push(marker);
+		}
+		if(!isAlreadyAdded) {
+			var latLngBusStop = new google.maps.LatLng(activeStop.latitude, activeStop.longitude);
+			var	marker = new google.maps.Marker({
+				map: map,
+				position: latLngBusStop,
+				icon: {
+					path: google.maps.SymbolPath.SQUARE,
+					scale: 5
+					}
+			});
+			markers.push(marker);
 
-				markers[markers.length - 1]['infowin'] = new google.maps.InfoWindow({
-					content: '<div>stop #:' + activeStop.StopNumber + '</div>'
-				});
-				
-				google.maps.event.addListener(markers[markers.length - 1], 'click', function() {
-					this['infowin'].open(map, this);
-				});
-			}
+			markers[markers.length - 1]['infowin'] = new google.maps.InfoWindow({
+				content: '<div>stop #:' + activeStop.StopNumber + '</div>'
+			});
+			
+			google.maps.event.addListener(markers[markers.length - 1], 'click', function() {
+				this['infowin'].open(map, this);
+			});
 		}
 	}
 	
