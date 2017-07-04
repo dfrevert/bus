@@ -41,7 +41,7 @@ div#id00C button.btn.btn-primary {
 <script type="text/javascript">
 "use strict";
 
-var version = '20170703_1113';
+var version = '20170704_1003';
 
 // improvements
 //     map should not be populated if the MAP div is not visible.  If it is, the road map is never shown. DONE
@@ -159,8 +159,25 @@ function buildStopResults(arr) {
     var i;
 //	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
 	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
-		
+
+	var targetPoint = null;
+	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
+	if(rawActiveNumberedBusStopNumber != null) {
+		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
+		if(activeNumberedBusStopNumber != null) {
+			targetPoint = activeNumberedBusStopNumber;
+		}
+	}
+	
     for(i = 0; i < arr.length; i++) {
+	
+		var milesAndDirectionLetter = "";
+		if(targetPoint != null && arr[i] != null && arr[i].VehicleLatitude != null && arr[i].VehicleLatitude != "0") {
+			var busAtPoint = {"latitude": arr[i].VehicleLatitude, "longitude": arr[i].VehicleLongitude};
+			var milesAway = miles(busAtPoint, targetPoint);	
+			milesAndDirectionLetter = milesAndDirection(milesAway);
+		}
+	
 		out += "<tr><td>" +
 		// "</td><td>" +
 		((arr[i].BlockNumber == null) ? arr[i].Route + arr[i].Terminal : '<button type="button" class="btn btn-primary btn-md" onclick="busNumberClicked2(' + arr[i].BlockNumber + ', ' + arr[i].Route +')" >' + arr[i].Route + arr[i].Terminal + ' bus:' + arr[i].BlockNumber + '</button>') +
@@ -171,7 +188,7 @@ function buildStopResults(arr) {
 		"</td><td>" +
 		arr[i].RouteDirection +
 		"</td><td>" +
-		((arr[i].VehicleLatitude == null || arr[i].VehicleLatitude == "0" ) ? "&nbsp;" : distanceInMiles3Digits(arr[i])) +
+		((milesAndDirectionLetter == "") ? "&nbsp;" : milesAndDirectionLetter) +
 		"</td></tr>";
     }
     out += "</table></div>"
@@ -184,7 +201,7 @@ function buildStopResults(arr) {
 		if(activeNumberedBusStopNumber != null) {
 			document.getElementById("title1").innerHTML = "Bus Schedule " + activeNumberedBusStopNumber.stopNumber;
 			
-			var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + activeNumberedBusStopNumber.stopNumber + '");" >' + activeNumberedBusStopNumber.stopNumber + ' - ' + activeNumberedBusStopNumber.description + '</button>';
+			var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + activeNumberedBusStopNumber.stopNumber + ');" >' + activeNumberedBusStopNumber.stopNumber + ' - ' + activeNumberedBusStopNumber.description + '</button>';
 			
 			var timeOfQuery = new Date();
 			outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
@@ -859,6 +876,24 @@ function showRecentNumberedStop(buttonIndex, description) {
 	recentIElement.hidden = false;
 	recentIElement.classList.remove("hidden");
 	recentIElement.innerHTML = description;
+}
+
+function resetRecentNumberedStopButtons() {
+	// spin through the 
+	for(var i=0; i < 5; i++) {
+		var recentIElement = document.getElementById("recentStop" + i);
+		var recentValue = getDbValue("BusStopNumber" + i);
+		if(recentValue == null) {
+			recentIElement.hidden = true;
+			recentIElement.classList.add("hidden");
+		} else {
+			recentIElement.hidden = false;
+			recentIElement.classList.remove("hidden");
+			var recentBusStopNumber = JSON.parse(recentValue);
+			var out = recentBusStopNumber.stopNumber + " - " + recentBusStopNumber.description;
+			recentIElement.innerHTML = out;			
+		}
+	}
 }
 
 function rotateRecentRoutes() {
@@ -1768,6 +1803,7 @@ if(Modernizr.localstorage) {
 	}
 	
 	resetRecentButtons();
+	resetRecentNumberedStopButtons();
 }
 
 </script>
