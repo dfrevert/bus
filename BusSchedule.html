@@ -41,7 +41,7 @@ div#id00C button.btn.btn-primary {
 <script type="text/javascript">
 "use strict";
 
-var version = '20170701_1214';
+var version = '20170703_1113';
 
 // improvements
 //     map should not be populated if the MAP div is not visible.  If it is, the road map is never shown. DONE
@@ -96,8 +96,11 @@ function showStop(stopNumber) {
 }
 
 function saveNumberedBusStopInfo(stopNumber) {
-	var activeNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
-	if(activeNumberedBusStopNumber != null && activeNumberedBusStopNumber.stopNumber == stopNumber) return;
+	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
+	if(rawActiveNumberedBusStopNumber != null) {
+		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
+		if(activeNumberedBusStopNumber != null && activeNumberedBusStopNumber.stopNumber == stopNumber) return;
+	}
 	
 	// lookup the stop offsets based on the 
 	var oStopNumber = "o" + stopNumber.toString();
@@ -175,6 +178,20 @@ function buildStopResults(arr) {
     document.getElementById("id00B").innerHTML = out;
 	document.getElementById("id00B").style.display = "block";
 	
+	var rawActiveNumberedBusStopNumber = getDbValue("ActiveNumberedBusStop");
+	if(rawActiveNumberedBusStopNumber != null) {
+		var activeNumberedBusStopNumber = JSON.parse(rawActiveNumberedBusStopNumber);
+		if(activeNumberedBusStopNumber != null) {
+			document.getElementById("title1").innerHTML = "Bus Schedule " + activeNumberedBusStopNumber.stopNumber;
+			
+			var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + activeNumberedBusStopNumber.stopNumber + '");" >' + activeNumberedBusStopNumber.stopNumber + ' - ' + activeNumberedBusStopNumber.description + '</button>';
+			
+			var timeOfQuery = new Date();
+			outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
+			
+			document.getElementById("id00C").innerHTML = outButton;
+		}
+	}
 }
 
 // to use:     alert("current time is " + new Date().toHHMMSS());
@@ -211,6 +228,8 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 
 			setDbValue("VehicleLocation." + route + "." + blockNumber, newValue);
 			console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
+			
+			isCurrentTargetANumberedBusStop = false;
 
 			rewriteActualTableData(route, blockNumber);
 			return;
@@ -367,7 +386,8 @@ function busNumberClicked2(blockNumber, routeNumber) {
 		var stop = getDbValue("ActiveNumberedBusStop");
 		if(stop != null) {
 			var myNumberedStop = JSON.parse(stop);
-			console.log("busNumberClicked2 line 367, myNumberedStop=" + myNumberedStop + " calling initializeMap2.");
+			console.log("busNumberClicked2 line 373, stop=" + stop + "  myNumberedStop=" + myNumberedStop + " calling initializeMap2.");
+			myBlockNumber = blockNumber;
 			initializeMap2(myNumberedStop);
 		}
 	}
@@ -742,7 +762,7 @@ function populateDepartures(route, direction, stop, responseText) {
     document.getElementById("title1").innerHTML = "Bus Schedule " + route;
     document.getElementById("id00B").innerHTML = out;
 	
-	var outButton = "<button type=\"button\" class=\"btn btn-primary\" onclick=\"getDepartures(" + route + ", " + direction + ", &quot;" + stop + "&quot;);\" >" + route + " - " + directionAsString(direction) + " - " + stop + "</button>";
+	var outButton = '<button type="button" class="btn btn-primary" onclick="getDepartures(' + route + ', ' + direction + ', "' + stop + '");" >' + route + ' - ' + directionAsString(direction) + ' - ' + stop + '</button>';
 	
 	var timeOfQuery = new Date();
 	outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
@@ -775,7 +795,8 @@ function selectRecentNumberedStop(item) {
 	if(itemValue != null) {
 		var itemStop = JSON.parse(itemValue);
 		console.log('selectRecentNumberedStop(' + item + ') not null, itemValue=' + itemValue);
-//		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
+		setDbValue("ActiveNumberedBusStop", itemValue);
+		showStop(itemStop.stopNumber);
 	}
 }
 
@@ -811,39 +832,33 @@ function rotateRecentNumberedStops() {
 		// found an existing (matchBusStopNumber) use (recent) to change matchBusStopNumber
 		matchBusStopNumber.description = recent.description;
 		setDbValue("BusStopNumber" + matchIndex, JSON.stringify(matchBusStopNumber));
-		
-		var recentIElement = document.getElementById("recentStop" + matchIndex);
-		recentIElement.hidden = false;
-		recentIElement.classList.remove("hidden");
-		recentIElement.innerHTML = recent.description;
+		showRecentNumberedStop(matchIndex, recent.description);
 	} else {
 		if((matchIndex == -1) && (emptyIndex > -1)) {
 			// create new BusStopNumber
 			setDbValue("BusStopNumber" + emptyIndex, recentRaw);
-//			$("#recentStop" + emptyIndex).innerHTML = recent.description;
-//			$("#recentStop" + emptyIndex).removeClass("hidden");
-
-			var recentIElement = document.getElementById("recentStop" + emptyIndex);
-			recentIElement.hidden = false;
-			recentIElement.classList.remove("hidden");
-			recentIElement.innerHTML = recent.description;
+			showRecentNumberedStop(emptyIndex, recent.description);
 		} else {
 			// drop existing BusStopNumber   drop 0, copy 1 to 0, 2 to 1, ... 4 to 3, add in 4
 			for(var i=0; i < 5; i++) {
 				var tempRaw = getDbValue("BusStopNumber" + (i + 1));
 				var temp = JSON.parse(tempRaw);
 				setDbValue("BusStopNumber" + i, tempRaw);
-//				$("#recentStop" + i).innerHTML = temp.description;
-//				$("#recentStop" + i).removeClass("hidden");
-
-				var recentIElement = document.getElementById("recentStop" + i);
-				recentIElement.hidden = false;
-				recentIElement.classList.remove("hidden");
-				recentIElement.innerHTML = temp.description;
-
+				showRecentNumberedStop(i, temp.description);
 			}
 		}
 	}
+}
+
+function showRecentNumberedStop(buttonIndex, description) {
+	var recentIElement = document.getElementById("recentStop" + buttonIndex);
+	if(recentIElement == null) {
+		console.log("showRecentNumberedStop(buttonIndex, description) failed.  buttonIndex=" + buttonIndex + "  description=" + description);
+		return;
+	}
+	recentIElement.hidden = false;
+	recentIElement.classList.remove("hidden");
+	recentIElement.innerHTML = description;
 }
 
 function rotateRecentRoutes() {
