@@ -83,7 +83,7 @@ function showStop(stopNumber) {
 	saveNumberedBusStopInfo(stopNumber);
 
 	var xmlhttp2 = new XMLHttpRequest();
-	var url2 = "http://svc.metrotransit.org/NexTrip/" + stopNumber.toString() + "?format=json";
+	var url2 = "https://svc.metrotransit.org/NexTrip/" + stopNumber.toString() + "?format=json";
 	
 	xmlhttp2.onreadystatechange=function() {
 		if (xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
