@@ -228,6 +228,14 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 	}
 }
 
+function getRouteDirectionStopActive() {
+	var raw = getDbValue("RouteDirectionStopActive")
+	if(raw == null) {
+		return null;
+	}
+	return JSON.parse(raw);
+}
+
 var secondsElapsedOffset = 0;
 function rewriteActualTableData(route, blockNumber) {
 	// nn sec ago:  (up to 100)   n.n min ago:  (up to 5 minutes)
@@ -262,14 +270,10 @@ function rewriteActualTableData(route, blockNumber) {
 
 	// ScheduledStop info
 	var busAtPoint = {"latitude": busLastAt.latitude, "longitude": busLastAt.longitude};
-	var dbRouteDirectionStopActive = getDbValue("RouteDirectionStopActive")
-	var activeRouteDirectionStop = null;
+	var routeDirectionStopActive = getRouteDirectionStopActive();
 	var activeStop = null;
-	if(dbRouteDirectionStopActive != null) {
-		activeRouteDirectionStop = JSON.parse(dbRouteDirectionStopActive);
-		if(activeRouteDirectionStop != null) {
-			activeStop = JSON.parse(getDbValue("Stop." + activeRouteDirectionStop.stop));
-		}
+	if(routeDirectionStopActive != null) {
+		activeStop = JSON.parse(getDbValue("Stop." + routeDirectionStopActive.stop));
 	}
 	
 	var busStopPoint = null;
@@ -722,15 +726,15 @@ function populateDepartures(route, direction, stop, responseText) {
 			myRoute = route;
 		}
 		
-		// console.log("RouteDirectionStopDeparture." + route + "." + direction + "." + stop + "=" + responseText);
-		
-		var currentValue = getDbValue("RouteDirectionStopActive");
-		var newValue = "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}";
-		if(currentValue != null && currentValue == newValue) {
+		var routeDirectionStopActive = getRouteDirectionStopActive();
+		if(routeDirectionStopActive != null && routeDirectionStopActive.route == route && routeDirectionStopActive.direction == direction && routeDirectionStopActive.stop == stop) {
 			// dbValue already set to this, so assume it's ok to remove the 00A section
 		}
 		else {
-			setDbValue("RouteDirectionStopActive", newValue); // "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}");
+			var newVal = {"route":route, "direction":direction, "stop":stop };
+			// var newValue = "{\"route\":" + route + ", \"direction\":" + direction + ", \"stop\":\"" + stop + "\"}";
+			// setDbValue("RouteDirectionStopActive", newValue);
+			setDbValue("RouteDirectionStopActive", JSON.stringify(newVal));
 			// setDbValue("ActiveScheduledBusStop", ...);
 			var rawStop = getDbValue("Stop" + stop);
 			if(rawStop != null) {
@@ -865,19 +869,20 @@ function resetRecentNumberedStopButtons() {
 function rotateRecentRoutes() {
 	// assumes that the new value RouteDirectionStopActive has been set
 	//   .0 is a copy of RouteDirectionStopActive
+	var routeDirectionStopActive = getRouteDirectionStopActive();
 	var recentValue = getDbValue("RouteDirectionStopActive.0");
 	if(recentValue == null) {
-		recentValue = getDbValue("RouteDirectionStopActive");
-		if(recentValue != null) {
-			setDbValue("RouteDirectionStopActive.0", recentValue);
+		if(routeDirectionStopActive != null) {
+			setDbValue("RouteDirectionStopActive.0", JSON.stringify(routeDirectionStopActive));
 		}
 		return;
 	}
 	
-	var currentValue = getDbValue("RouteDirectionStopActive");
-	if(currentValue == null) {
+	if(routeDirectionStopActive == null) {
 		return;   // something horrible happened!
 	}
+	// TODO: this function is using the raw value, not the object????
+	var currentValue = JSON.stringify(routeDirectionStopActive);
 
 	// is it already in the list? if so, only need to replace up to that one
 	var isAlreadyInTheList = false;
@@ -902,10 +907,11 @@ function rotateRecentRoutes() {
 			setDbValue("RouteDirectionStopActive." + (i + 1), recentValue);
 		}
 	}
-	recentValue = getDbValue("RouteDirectionStopActive");
-	if(recentValue != null) {
-		setDbValue("RouteDirectionStopActive.0", recentValue);
+
+	if(routeDirectionStopActive != null) {
+		setDbValue("RouteDirectionStopActive.0", JSON.stringify(routeDirectionStopActive));
 	}
+
 	resetRecentButtons();
 }
 
@@ -1756,9 +1762,8 @@ var myBlockNumberTimeout = new Date(2015,1,1);
 var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus stop
 
 if(Modernizr.localstorage) {
-	var p =  getDbValue("RouteDirectionStopActive");
-	if(p != null) {
-		var rdsa = JSON.parse(p);
+	var rdsa = getRouteDirectionStopActive();
+	if(rdsa != null) {
 		getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
 	}
 	
