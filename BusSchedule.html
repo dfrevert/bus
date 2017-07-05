@@ -57,6 +57,22 @@ var version = '20170704_1003';
 //                                                           1 deg longitude at 45deg    is 258683.23 ft.
 //                                                           50ft is 1.93e-4 or .000193 degrees
 //
+function getActiveNumberedBusStop() {
+	var raw = getDbValue("ActiveNumberedBusStop");
+	if(raw == null) {
+		return null;
+	}
+	return JSON.parse(raw);
+}
+
+function getRouteDirectionStopActive() {
+	var raw = getDbValue("RouteDirectionStopActive")
+	if(raw == null) {
+		return null;
+	}
+	return JSON.parse(raw);
+}
+
 function showStop(stopNumber) {
 	saveNumberedBusStopInfo(stopNumber);
 
@@ -73,13 +89,6 @@ function showStop(stopNumber) {
 	xmlhttp2.send();
 }
 
-function getActiveNumberedBusStop() {
-	var rawActiveNumberedBusStop = getDbValue("ActiveNumberedBusStop");
-	if(rawActiveNumberedBusStop != null) {
-		return JSON.parse(rawActiveNumberedBusStop);
-	}
-	return null;
-}
 
 function saveNumberedBusStopInfo(stopNumber) {
 	var activeNumberedBusStop = getActiveNumberedBusStop();
@@ -226,14 +235,6 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 		//          Odometer: 0, Route: "14", Speed: 0, Terminal: "R", 
 		//          VehicleLatitude: 44.864286, VehicleLongitude: -93.243361 }
 	}
-}
-
-function getRouteDirectionStopActive() {
-	var raw = getDbValue("RouteDirectionStopActive")
-	if(raw == null) {
-		return null;
-	}
-	return JSON.parse(raw);
 }
 
 var secondsElapsedOffset = 0;
@@ -736,7 +737,7 @@ function populateDepartures(route, direction, stop, responseText) {
 			// setDbValue("RouteDirectionStopActive", newValue);
 			setDbValue("RouteDirectionStopActive", JSON.stringify(newVal));
 			// setDbValue("ActiveScheduledBusStop", ...);
-			var rawStop = getDbValue("Stop" + stop);
+			var rawStop = getDbValue("Stop." + stop);
 			if(rawStop != null) {
 				var stopParsed = JSON.parse(rawStop);
 				if(stopParsed != null) {
@@ -753,7 +754,7 @@ function populateDepartures(route, direction, stop, responseText) {
     document.getElementById("title1").innerHTML = "Bus Schedule " + route;
     document.getElementById("id00B").innerHTML = out;
 	
-	var outButton = '<button type="button" class="btn btn-primary" onclick="getDepartures(' + route + ', ' + direction + ', "' + stop + '");" >' + route + ' - ' + directionAsString(direction) + ' - ' + stop + '</button>';
+	var outButton = '<button type="button" class="btn btn-primary" onclick="getDepartures(' + route + ', ' + direction + ', \'' + stop + '\');" >' + route + ' - ' + directionAsString(direction) + ' - ' + stop + '</button>';
 	
 	var timeOfQuery = new Date();
 	outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
@@ -919,14 +920,13 @@ function resetRecentButtons() {
 	// spin through the 
 	for(var i=0; i < 5; i++) {
 		var recentIElement = document.getElementById("recent" + i);
-		var recentValue = getDbValue("RouteDirectionStopActive." + i);
-		if(recentValue == null) {
+		var recentStop = getRouteDirectionStopActiveDotI(i);
+		if(recentStop == null) {
 			recentIElement.hidden = true;
 			recentIElement.classList.add("hidden");
 		} else {
 			recentIElement.hidden = false;
 			recentIElement.classList.remove("hidden");
-			var recentStop = JSON.parse(recentValue);
 			
 			//	<li id="recent0" onclick="selectRecent(0);">&nbsp;</li>
 			var outListItem = recentStop.route + " - " + directionAsString(recentStop.direction) + " - " + recentStop.stop;
@@ -943,11 +943,18 @@ function directionAsString(direction) {
 }
 
 function selectRecent(item) {
-	var itemValue = getDbValue("RouteDirectionStopActive." + item);
-	if(itemValue != null) {
-		var itemStop = JSON.parse(itemValue);
+	var itemStop = getRouteDirectionStopActiveDotI(item);
+	if(itemStop != null) {
 		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
 	}
+}
+
+function getRouteDirectionStopActiveDotI(i) {
+	var raw = getDbValue("RouteDirectionStopActive." + i);
+	if(raw == null) {
+		return null;
+	}
+	return JSON.parse(raw);
 }
 
 // Where a = line point 1; b = line point 2; c = point to check against.
