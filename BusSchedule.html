@@ -93,6 +93,10 @@ function showStop(stopNumber) {
 function saveNumberedBusStopInfo(stopNumber) {
 	var activeNumberedBusStop = getActiveNumberedBusStop();
 	if(activeNumberedBusStop != null && activeNumberedBusStop.stopNumber == stopNumber) {
+//		var busStopNumberEntered = getBusStopNumberEntered();
+//		if(busStopNumberEntered != null && busStopNumberEntered.stopNumber == activeNumberedBusStop.stopNumber && busStopNumberEntered.description != null && busStopNumberEntered.description.length() > 0 && busStopNumberEntered.description != activeNumberedBusStop.description) {
+//			
+//		}
 		return;
 	}
 	
@@ -846,7 +850,7 @@ function showRecentNumberedStop(buttonIndex, description) {
 	}
 	recentIElement.hidden = false;
 	recentIElement.classList.remove("hidden");
-	recentIElement.innerHTML = description;
+	recentIElement.innerHTML = (description == null || description == "") ? "&nbsp;" : description;
 }
 
 function resetRecentNumberedStopButtons() {
@@ -861,7 +865,7 @@ function resetRecentNumberedStopButtons() {
 			recentIElement.hidden = false;
 			recentIElement.classList.remove("hidden");
 			var recentBusStopNumber = JSON.parse(recentValue);
-			var out = recentBusStopNumber.stopNumber + " - " + recentBusStopNumber.description;
+			var out = recentBusStopNumber.stopNumber + " - " + ((recentBusStopNumber.description == null) ? " " : recentBusStopNumber.description);
 			recentIElement.innerHTML = out;			
 		}
 	}
