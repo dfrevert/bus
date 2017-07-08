@@ -41,7 +41,7 @@ div#id00C button.btn.btn-primary {
 <script type="text/javascript">
 "use strict";
 
-var version = '20170704_1003';
+var version = '20170706_1616';
 
 // todo
 //     First time experience
@@ -93,10 +93,6 @@ function showStop(stopNumber) {
 function saveNumberedBusStopInfo(stopNumber) {
 	var activeNumberedBusStop = getActiveNumberedBusStop();
 	if(activeNumberedBusStop != null && activeNumberedBusStop.stopNumber == stopNumber) {
-//		var busStopNumberEntered = getBusStopNumberEntered();
-//		if(busStopNumberEntered != null && busStopNumberEntered.stopNumber == activeNumberedBusStop.stopNumber && busStopNumberEntered.description != null && busStopNumberEntered.description.length() > 0 && busStopNumberEntered.description != activeNumberedBusStop.description) {
-//			
-//		}
 		return;
 	}
 	
@@ -582,7 +578,7 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 	myDirection = direction;
 	
 	if((myStop == null) || (myStop != stop)) {
-		document.getElementById('selectedStop').innerHTML = '&nbsp;:&nbsp;' + stopDescription + '&nbsp;&nbsp;&nbsp;';
+		document.getElementById('selectedStop').innerHTML = '&nbsp;&nbsp;' + stopDescription + '&nbsp;&nbsp;&nbsp;';
 	}
 	myStop = stop;
 	// console.log("myRoute=" + myRoute);
@@ -1674,7 +1670,7 @@ function clearTracking() {
 			<span id="selectStopButton"         class="btn btn-default" onclick="selectRouteDirectionStopsUsingMyDirection()">Stop</span>
 			<span id="selectedStop"></span>
 		</div>
-		<hr>
+		<hr style="margin-top: 2px; margin-bottom: 2px;" >
         <div id="id00RouteDirectionStop"></div>
 	  </div>
 	</div>
