@@ -1,5 +1,6 @@
 var testStopExists = getDbValue("Stop.11SM");
 if((testStopExists == null) && supports_html5_storage()) {
+	console.log("loading from stopLocations.js into local storage");
 	setDbValue("Stop.101B","{\"latitude\":45.1378,\"longitude\":-93.4133}");
 	setDbValue("Stop.101W","{\"latitude\":45.1117,\"longitude\":-93.5118}");
 	setDbValue("Stop.1022","{\"latitude\":44.819,\"longitude\":-93.2754}");

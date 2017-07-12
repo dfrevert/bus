@@ -226,8 +226,6 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 			setDbValue("VehicleLocation." + route + "." + blockNumber, newValue);
 			console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
 			
-			isCurrentTargetANumberedBusStop = false;
-
 			rewriteActualTableData(route, blockNumber);
 			return;
 		}
@@ -616,6 +614,8 @@ function populateDepartures(route, direction, stop, responseText) {
 	if(scheduledStop != null) {
 		targetPoint = JSON.parse(scheduledStop);
 	}
+
+	isCurrentTargetANumberedBusStop = false;
 	
 	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
 	var out = '<div class="table-responsive"><table class="table table-bordered"><tr class="table-row table-header"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
@@ -1593,7 +1593,7 @@ function clearTracking() {
 </head>
 
 <body>
-<nav role="navigation" class="navbar navbar-default navbar-static-top">
+<nav role="navigation" class="navbar navbar-default navbar-static-top" style="margin-bottom: 5px;" >
 	<div class="container">
 		<!-- Brand and toggle get grouped for better mobile display -->
 		<div class="navbar-header">
@@ -1736,11 +1736,16 @@ function clearTracking() {
 <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
 
-<script type='text/javascript' src='stopLocations.js' defer="true"></script>
-<script type='text/javascript' src='stopOffsets.js' defer="true"></script>
-
 <script type="text/javascript">
 "use strict";
+
+if(getDbValue("o34") == null && supports_html5_storage()){
+    document.write('<script src=\"stopOffsets.js\" type=\"text/javascript\" defer=\"true\" ><\/script>');
+}
+if(getDbValue("Stop.11SM") == null && supports_html5_storage()) {
+    document.write('<script src=\"stopLocations.js\" type=\"text/javascript\" defer=\"true\" ><\/script>');
+}
+
 // global variables for location
 var Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
 
@@ -1759,8 +1764,8 @@ var PlymouthWashington = {latitude:44.992010,longitude:-93.281476};   // #14
 var FifthStBusRamp   = {latitude:44.980832,  longitude:-93.275425};   // #14
 var SixthNicollet    = {latitude:44.977802,  longitude:-93.271305};
 
-var myRoute = 14;
-var myDirection = 1;
+var myRoute = -1; // 14;
+var myDirection = -1; // 1;
 var myStop = '';
 
 var myBlockNumber = 0;
@@ -1769,10 +1774,10 @@ var myBlockNumberTimeout = new Date(2015,1,1);
 var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus stop
 
 if(Modernizr.localstorage) {
-	var rdsa = getRouteDirectionStopActive();
-	if(rdsa != null) {
-		getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
-	}
+	// var rdsa = getRouteDirectionStopActive();
+	// if(rdsa != null) {
+	//	getDepartures(rdsa.route, rdsa.direction, rdsa.stop);
+	//}
 	
 	resetRecentButtons();
 	resetRecentNumberedStopButtons();
