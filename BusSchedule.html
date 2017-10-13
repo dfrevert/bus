@@ -5,10 +5,8 @@
 
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 	
-	<script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js'></script>
-	<script type='text/javascript'>
-		window.Modernizr || document.write('<script src="modernizr/modernizr.js">\x3C/script>');
-	</script>
+	<!-- modernizr 3.5, dropping CDN  -->
+	<script type="text/javascript" src="modernizr/modernizr.js" />
 	
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 	<!-- loads if googleapis is not available -->
@@ -100,16 +98,16 @@ function saveNumberedBusStopInfo(stopNumber) {
 	var oStopNumber = "o" + stopNumber.toString();
 	var dbStopNumber = getDbValue(oStopNumber);
 	if(dbStopNumber == null) {
-		console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") caused dbStopNumber to be null. Skipping.");
-		console.log("getDbValue(oStopNumber) returned null when oStopNumber=" + oStopNumber);
+		// console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") caused dbStopNumber to be null. Skipping.");
+		// console.log("getDbValue(oStopNumber) returned null when oStopNumber=" + oStopNumber);
 		return;
 	}
 	var offsetForStop = JSON.parse(dbStopNumber);
 	if(offsetForStop == null) {
-		console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") caused offsetForStop to be null. Skipping.");
+		//console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") caused offsetForStop to be null. Skipping.");
 		return;
 	}
-	console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") called, offsetForStop = " + JSON.stringify(offsetForStop));
+	//console.log("saveNumberedBusStopInfo(" + stopNumber.toString() + ") called, offsetForStop = " + JSON.stringify(offsetForStop));
 	
 	// offsets have been multiplied by 10,000 and rounded to 0 from these MIN values
 	// @lat_min     @lon_min
@@ -203,7 +201,7 @@ function showBusLocation2(route, blockNumber) {
 	var xmlhttp8 = new XMLHttpRequest();
 	var url8 = "https://svc.metrotransit.org/NexTrip/VehicleLocations/" + route + "?format=json";
 
-	console.log("showBusLocation2(" + route + ", " + blockNumber + ") called.  url8=" + url8);
+	//console.log("showBusLocation2(" + route + ", " + blockNumber + ") called.  url8=" + url8);
 	
 	xmlhttp8.onreadystatechange=function() {
 		if (xmlhttp8.readyState == 4 && xmlhttp8.status == 200) {
@@ -224,7 +222,7 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 			var newValue = "{\"direction\":" + arr[i].Direction + ", \"locationTime\":\"" + arr[i].LocationTime + "\", \"latitude\":" + arr[i].VehicleLatitude + ", \"longitude\":" + arr[i].VehicleLongitude + "}";
 
 			setDbValue("VehicleLocation." + route + "." + blockNumber, newValue);
-			console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
+			//console.log("VehicleLocation." + route + "." + blockNumber + "=" + newValue);
 			
 			rewriteActualTableData(route, blockNumber);
 			return;
@@ -284,7 +282,7 @@ function rewriteActualTableData(route, blockNumber) {
 		}
 	}
 	if(busStopPoint == null) {
-		console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
+		//console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
 		return;
 	}
 
@@ -301,7 +299,7 @@ function rewriteActualTableData(route, blockNumber) {
 	var actualRouteBlockNumber = document.getElementById("Actual_" + route + "_" + blockNumber);
 	if(actualRouteBlockNumber != null) {
 		actualRouteBlockNumber.innerHTML = s; 
-		console.log("Created the busNumberClicked button with blockNumber=" + blockNumber);
+		//console.log("Created the busNumberClicked button with blockNumber=" + blockNumber);
 	}
 }
 
@@ -370,13 +368,13 @@ $('#routeButtonGroup button').click(function() {
 
 
 function busNumberClicked2(blockNumber, routeNumber) {
-	console.log("busNumberClicked2(" + blockNumber + ", " + routeNumber + ");");
+	//console.log("busNumberClicked2(" + blockNumber + ", " + routeNumber + ");");
 	myRoute = routeNumber;
 	
 	if(map == null) {
 		var targetStop = getActiveNumberedBusStop();
 		if(targetStop != null) {
-			console.log("busNumberClicked2 line 374, targetStop=" + JSON.stringify(targetStop) + "  calling initializeMap2(targetStop).");
+			//console.log("busNumberClicked2 line 374, targetStop=" + JSON.stringify(targetStop) + "  calling initializeMap2(targetStop).");
 			myBlockNumber = blockNumber;
 			initializeMap2(targetStop);
 		}
@@ -388,14 +386,13 @@ function busNumberClicked2(blockNumber, routeNumber) {
 
 function busNumberClicked(blockNumber) {
 	if(myBlockNumber == blockNumber) {
-		console.log("busNumberClicked  myBlockNumber=" + myBlockNumber + " blockNumber=" + blockNumber);
-		showBusLocation2(myRoute, blockNumber);
+		//console.log("busNumberClicked  myBlockNumber=" + myBlockNumber + " blockNumber=" + blockNumber);
 		if(map == null) {
 			var stop = getDbValue("Stop." + myStop);
 			if(stop != null) {
 				var stopMine = JSON.parse(stop);
 				initializeMap2(stopMine);
-				console.log("busNumberClicked line 280, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+				//console.log("busNumberClicked line 280, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
 			}
 		}
 		showBusLocation2(myRoute, blockNumber);
@@ -415,18 +412,18 @@ function busNumberClicked(blockNumber) {
 			var i;
 			for(i = 0; i < arr.length; i++) {
 				if(arr[i].BlockNumber == blockNumber) {
-					console.log("busNumberClicked  i=" + i + " blockNumber=" + blockNumber);
+					//console.log("busNumberClicked  i=" + i + " blockNumber=" + blockNumber);
 
 					var newValue = JSON.stringify(arr[i]);	
 					var isOk = setDbValue("VehicleTracked." + blockNumber, newValue);
-					console.log("busNumberClicked  setDbValue VehicleTracked." + blockNumber + " isOk=" + isOk + "  newValue=" + newValue);
+					//console.log("busNumberClicked  setDbValue VehicleTracked." + blockNumber + " isOk=" + isOk + "  newValue=" + newValue);
 					
 					if(map == null) {
 						var stop = getDbValue("Stop." + myStop);
 						if(stop != null) {
 							var stopMine = JSON.parse(stop);
 							initializeMap2(stopMine);
-							console.log("busNumberClicked, stopMine=" + stopMine + " initializeMap2 called.");
+							//console.log("busNumberClicked, stopMine=" + stopMine + " initializeMap2 called.");
 						}
 					}
 				}
@@ -631,7 +628,7 @@ function populateDepartures(route, direction, stop, responseText) {
 			}
 		}
 		shouldShowTrackedBus = !hasBlockNumberMatch;
-		console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
+		//console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
 		
 		if(shouldShowTrackedBus) {
 			// need to be able to add based on a saved row, 
@@ -672,7 +669,7 @@ function populateDepartures(route, direction, stop, responseText) {
 		}
 	}
 	
-	console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
+	//console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
 	
     for(i = 0; (i < arr.length) && (i < 5); i++) {
 		if(!isValid && arr[i] != null && arr[i].VehicleLatitude != null) {
@@ -715,15 +712,15 @@ function populateDepartures(route, direction, stop, responseText) {
 		setDbValue("RouteDirectionStopDeparture." + route + "." + direction + "." + stop, responseText);
 		
 		if(stop != myStop) {
-			console.log("populateDepartures  stop != myStop: (" + stop + ", " + myStop + ")");
+			//console.log("populateDepartures  stop != myStop: (" + stop + ", " + myStop + ")");
 			myStop = stop;
 		}
 		if(direction != myDirection) {
-			console.log("populateDepartures  direction != myDirection: (" + direction + ", " + myDirection + ")");
+			//console.log("populateDepartures  direction != myDirection: (" + direction + ", " + myDirection + ")");
 			myDirection = direction;
 		}
 		if(route != myRoute) {
-			console.log("populateDepartures  route != myRoute: (" + route + ", " + myRoute + ")");
+			//console.log("populateDepartures  route != myRoute: (" + route + ", " + myRoute + ")");
 			myRoute = route;
 		}
 		
@@ -786,7 +783,7 @@ function selectRecentNumberedStop(item) {
 	var itemValue = getDbValue("BusStopNumber" + item);
 	if(itemValue != null) {
 		var itemStop = JSON.parse(itemValue);
-		console.log('selectRecentNumberedStop(' + item + ') not null, itemValue=' + itemValue);
+		//console.log('selectRecentNumberedStop(' + item + ') not null, itemValue=' + itemValue);
 		setDbValue("ActiveNumberedBusStop", itemValue);
 		showStop(itemStop.stopNumber);
 	}
@@ -841,7 +838,7 @@ function rotateRecentNumberedStops() {
 function showRecentNumberedStop(buttonIndex, description) {
 	var recentIElement = document.getElementById("recentStop" + buttonIndex);
 	if(recentIElement == null) {
-		console.log("showRecentNumberedStop(buttonIndex, description) failed.  buttonIndex=" + buttonIndex + "  description=" + description);
+		//console.log("showRecentNumberedStop(buttonIndex, description) failed.  buttonIndex=" + buttonIndex + "  description=" + description);
 		return;
 	}
 	recentIElement.hidden = false;
@@ -1461,7 +1458,7 @@ function initializeMap2(position) {
 }
 
 function addBlockButtonToMapTitle() {
-	console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + myBlockNumber);
+	//console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + myBlockNumber);
 	var divInTitle = document.getElementsByClassName("map-title");
 	var markup = markupBlockNumberButton(myBlockNumber);
 	markup = markup.replace(' onclick', ' style="margin-left: 30%; margin-right: 20%" onclick');
@@ -1469,7 +1466,7 @@ function addBlockButtonToMapTitle() {
 }
 
 function addResetButtonToMapTitle() {
-	console.log("addResetButtonToMapTitle() called.");
+	//console.log("addResetButtonToMapTitle() called.");
 	var mapTitleResetButton = document.getElementById("mapTitleResetButton");
 	if(mapTitleResetButton === null) {
 		var divInTitle = document.getElementsByClassName("map-title");
@@ -1482,7 +1479,7 @@ function addResetButtonToMapTitle() {
 
 // addMarker(" + stopNumber + ", " + blockNumber + ", " + row + ");
 function addMarkerForStop(stopNumber, blockNumber, rowId) {
-	console.log("addMarkerForStop  stopNumber=" + stopNumber + " blockNumber=" + blockNumber + " rowId=" + rowId + "  departuresByStopNumber(" + rowId + ")=" + JSON.stringify(departuresByStopNumber[rowId]));
+	//console.log("addMarkerForStop  stopNumber=" + stopNumber + " blockNumber=" + blockNumber + " rowId=" + rowId + "  departuresByStopNumber(" + rowId + ")=" + JSON.stringify(departuresByStopNumber[rowId]));
 	
 	var row = departuresByStopNumber[rowId];
 	var current = new google.maps.LatLng(row.VehicleLatitude, row.VehicleLongitude);
@@ -1497,6 +1494,23 @@ function addMarkerForStop(stopNumber, blockNumber, rowId) {
 			}
 		}
 		if(!isAlreadyAdded) {
+		
+			// if map is null, create one
+			if(map == null) {
+				//console.log("map is null.  addMarkerForStop(stopNumber, blockNumber, rowId)");
+				if(activeStop != null) {
+					//console.log("create map, activeNumberedStop = " + JSON.stringify(activeStop));
+					initializeMap2(activeStop);
+				} else {
+					//console.log("create map, current = " + JSON.stringify(current));
+					initializeMap2(current);
+				}
+			}	
+		
+			if(map == null) {
+				return;
+			}
+		
 			var latLngBusStop = new google.maps.LatLng(activeStop.latitude, activeStop.longitude);
 			var	marker = new google.maps.Marker({
 				map: map,
@@ -1518,31 +1532,40 @@ function addMarkerForStop(stopNumber, blockNumber, rowId) {
 		}
 	}
 	
-	// if map is null, create one
-	if(map == null) {
-		console.log("map is null.  addMarkerForStop(stopNumber, blockNumber, rowId)");
-		var activeNumberedStop = JSON.parse(activeNumberedBusStopNumber);
-		if(activeNumberedStop != null) {
-			console.log("create map, activeNumberedStop = " + JSON.stringify(activeNumberedStop));
-			initializeMap2(activeNumberedStop);
-		} else {
-			console.log("create map, current = " + JSON.stringify(current));
-			initializeMap2(current);
-		}
-		return;
-	}	
 }
 
 function addMarker(busLocation) {
-	console.log("addMarker  busLocation=" + JSON.stringify(busLocation));
+	//console.log("addMarker  busLocation=" + JSON.stringify(busLocation));
 	
     for (var i = 0; i < markers.length; i++)
 		if (busLocation.latitude === markers[i].position.lat() && busLocation.longitude === markers[i].position.lng()) return;
 
 	var current = new google.maps.LatLng(busLocation.latitude, busLocation.longitude);
 	
+	if(current == null) {
+		return;
+	}
+	
+	// if map is null, create one
 	if(map == null) {
-		console.log("map is null.  addMarker(busLocation)");
+		//console.log("map is null.  addMarker(busLocation)");
+		
+		var activeStop;
+		var rawActiveStop = getDbValue("ActiveScheduledBusStop");
+		if(rawActiveStop != null) {
+			activeStop = JSON.parse(rawActiveStop);
+		}
+
+		if(activeStop != null) {
+			//console.log("create map, activeStop = " + JSON.stringify(activeStop));
+			initializeMap2(activeStop);
+		} else {
+			//console.log("create map, current = " + JSON.stringify(current));
+			initializeMap2(current);
+		}
+	}	
+	if(map == null) {
+		//console.log("map is still null.  addMarker(busLocation)");
 		return;
 	}
 	
@@ -1708,7 +1731,7 @@ function clearTracking() {
 				return;
 			}
 			
-			console.log("Saving value", form.elements.stopNumber.value);
+			//console.log("Saving value", form.elements.stopNumber.value);
 			//var newValue = "{\"stopNumber\":\"" + form.elements.stopNumber.value + "\"}";
 			var newValue = '{"stopNumber":"' + form.elements.stopNumber.value + '", "description":"' + form.elements.stopDescription.value + '"}';
 			setDbValue("BusStopNumberEntered", newValue);
