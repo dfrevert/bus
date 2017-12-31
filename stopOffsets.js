@@ -1,6 +1,16 @@
-var testStopExists = getDbValue("o34");
-if((testStopExists == null) && supports_html5_storage()) {
+// var testStopExists = getDbValue("o34");
+
+function setDbValue(name, setting) {
+	try {
+		localStorage["BusSchedule." + name] = setting;
+	} catch (ex) {
+		console.log("setDbValue failed." + ex.message);
+	}
+}
+
+if(db1.getByKey("o70101") == null) {
 	console.log("loading from stopOffsets.js into local storage");
+	
 	setDbValue("o34","{\"n\":2640,\"e\":8950}");
 	setDbValue("o36","{\"n\":2618,\"e\":8948}");
 	setDbValue("o37","{\"n\":2610,\"e\":8948}");
@@ -1593,7 +1603,7 @@ if((testStopExists == null) && supports_html5_storage()) {
 	setDbValue("o3377","{\"n\":1870,\"e\":8691}");
 	setDbValue("o3379","{\"n\":1924,\"e\":8692}");
 	setDbValue("o3382","{\"n\":1978,\"e\":8728}");
-	setDbValue("o3384","{\"n\":1975,\"e\":8740}");
+	setDbValue("o787","{\"n\":2142,\"e\":8949}");
 	setDbValue("o3386","{\"n\":1972,\"e\":8766}");
 	setDbValue("o3388","{\"n\":1967,\"e\":8795}");
 	setDbValue("o3391","{\"n\":1965,\"e\":8831}");
@@ -13648,5 +13658,7 @@ if((testStopExists == null) && supports_html5_storage()) {
 	setDbValue("o70055","{\"n\":1745,\"e\":7466}");
 	setDbValue("o70099","{\"n\":622,\"e\":5142}");
 	setDbValue("o70100","{\"n\":1535,\"e\":6771}");
-	setDbValue("o70101","{\"n\":1536,\"e\":6769}");	
+	setDbValue("o70101","{\"n\":1536,\"e\":6769}");
+
+	console.log("loading from stopOffsets.js into local storage, done.");
 }	
