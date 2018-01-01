@@ -13,7 +13,7 @@
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
 	<!-- loads if googleapis is not available -->
 	<script>if (typeof jQuery === 'undefined') {
-	  document.write(unescape("%3Cscript src='jquery/jquery-2.1.4.js' type='text/javascript'%3E%3C/script%3E"));
+	  document.write(unescape("%3Cscript src='jquery/jquery-2.2.4.js' type='text/javascript'%3E%3C/script%3E"));
 	}
 	</script>
 
@@ -44,6 +44,7 @@ div#id00C button.btn.btn-primary {
 var version = '20171231_1353';
 
 var isDebugging = false; // true;
+var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 // attempt to use indexedDB, back to localStorage
 
@@ -849,9 +850,11 @@ function populateDepartures(route, direction, stop, responseText) {
 		}
 	}
 	
-	// console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
+	if(isDebugging) {
+		console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
+	}
 	
-    for(i = 0; (i < arr.length) && (i < 5); i++) {
+    for(i = 0; (i < arr.length) && (i < buttonMax); i++) {
 		if(!isValid && arr[i] != null && arr[i].VehicleLatitude != null) {
 			isValid = true;
 		}
@@ -953,66 +956,6 @@ function getStopDescription(route, direction, stop) {
 	return "";
 }
 
-// comparable to selectRecent(item), which handles ScheduledStops, not NumberedStops
-/*
-function selectRecentNumberedStop(item) {
-	var itemValue = tblBusStopNumber.getByKey("" + item);
-	if(itemValue != null) {
-		var itemStop = JSON.parse(itemValue);
-		// console.log('selectRecentNumberedStop(' + item + ') not null, itemValue=' + itemValue);
-		db1.setByKey("ActiveNumberedBusStop", itemValue);
-		showStop(itemStop.stopNumber);
-	}
-}
-*/
-/*
-function rotateRecentNumberedStops() {
-	var recent = getActiveNumberedBusStop();
-	if(recent == null) { return; }
-	
-	// is it already in the list? if so, only need to replace up to that one
-	var isAlreadyInTheList = false;
-	var matchBusStopNumber = null;
-	var matchIndex = -1;
-	var emptyIndex = -1;
-	for(var i=0; i < 5; i++) {
-		var stopIRaw = tblBusStopNumber.getByKey("" + i);
-		if(stopIRaw == null) {
-			if(emptyIndex == -1) {
-				emptyIndex = i;
-			}
-		} else {
-		    var stopI = JSON.parse(stopIRaw);
-			if((stopI != null) && (recent.stopNumber == stopI.stopNumber)) {
-				matchBusStopNumber = stopI;
-				matchIndex = i;
-				isAlreadyInTheList = true;
-			}
-		}
-	}
-	if(matchBusStopNumber != null) {
-		// found an existing (matchBusStopNumber) use (recent) to change matchBusStopNumber
-		matchBusStopNumber.description = recent.description;
-		tblBusStopNumber.setByKey('' + matchIndex, JSON.stringify(matchBusStopNumber));   // uses object
-		showRecentNumberedStop(matchIndex, recent.description);
-	} else {
-		if((matchIndex == -1) && (emptyIndex > -1)) {
-			// create new BusStopNumber
-			tblBusStopNumber.setByKey('' + emptyIndex, JSON.stringify(recent));   // uses object
-			showRecentNumberedStop(emptyIndex, recent.description);
-		} else {
-			// drop existing BusStopNumber   drop 0, copy 1 to 0, 2 to 1, ... 4 to 3, add in 4
-			for(var i=0; i < 5; i++) {
-				var tempRaw = tblBusStopNumber.getByKey("" + (i + 1));
-				var temp = JSON.parse(tempRaw);
-				tblBusStopNumber.setByKey('' + i, tempRaw);   // uses object
-				showRecentNumberedStop(i, temp.description);
-			}
-		}
-	}
-}
-*/
-
 function showRecentNumberedStop(buttonIndex, description) {
 	var recentIElement = document.getElementById("recentStop" + buttonIndex);
 	if(recentIElement == null) {
@@ -1023,96 +966,6 @@ function showRecentNumberedStop(buttonIndex, description) {
 	recentIElement.classList.remove("hidden");
 	recentIElement.innerHTML = (description == null || description == "") ? "&nbsp;" : description;
 }
-/*
-function resetRecentNumberedStopButtons() {
-	// spin through the 
-	for(var i=0; i < 5; i++) {
-		var recentIElement = document.getElementById("recentStop" + i);
-		var recentValue = tblBusStopNumber.getByKey("" + i);
-		if(recentValue == null) {
-			recentIElement.hidden = true;
-			recentIElement.classList.add("hidden");
-		} else {
-			recentIElement.hidden = false;
-			recentIElement.classList.remove("hidden");
-			var recentBusStopNumber = JSON.parse(recentValue);
-			var out = recentBusStopNumber.stopNumber + " - " + ((recentBusStopNumber.description == null) ? " " : recentBusStopNumber.description);
-			// still a button inside a nav bar, which does not work:  out += '<button id="recentStop' + i.toString() + 'Delete" class="btn btn-danger navbar-btn">X</button>"';
-			recentIElement.innerHTML = out;			
-		}
-	}
-}
-*/
-/*
-function rotateRecentRoutes() {
-	// assumes that the new value RouteDirectionStopActive has been set
-	//   .0 is a copy of RouteDirectionStopActive
-	var routeDirectionStopActive = getRouteDirectionStopActive();
-	var recentValue = tblRouteDirectionStopActive.getByKey('0');
-	if(recentValue == null) {
-		if(routeDirectionStopActive != null) {
-			tblRouteDirectionStopActive.setByKey('0', JSON.stringify(routeDirectionStopActive));
-		}
-		return;
-	}
-	
-	if(routeDirectionStopActive == null) {
-		return;   // something horrible happened!
-	}
-	// TODO: this function is using the raw value, not the object????
-	var currentValue = JSON.stringify(routeDirectionStopActive);
-
-	// is it already in the list? if so, only need to replace up to that one
-	var isAlreadyInTheList = false;
-	for(var i=0; i < 5; i++) {
-		recentValue = tblRouteDirectionStopActive.getByKey('' + i);
-		if(recentValue == null) { 
-			i = 999;
-		} else {
-			if(recentValue == currentValue) {
-				isAlreadyInTheList = true;
-				return;
-			}
-		}
-	}
-	// console.log("isAlreadyInTheList=" + isAlreadyInTheList);
-	
-	if(recentValue == currentValue) { return; }
-	
-	for(var i=4; i >= 0; i--) {
-		recentValue = tblRouteDirectionStopActive.getByKey('' + i);
-		if(recentValue != null) {
-			tblRouteDirectionStopActive.setByKey('' + (i + 1), recentValue);
-		}
-	}
-
-	if(routeDirectionStopActive != null) {
-		tblRouteDirectionStopActive.setByKey('0', JSON.stringify(routeDirectionStopActive));
-	}
-
-	resetRecentButtons();
-}
-*/
-/*
-function resetRecentButtons() {
-	// spin through the 
-	for(var i=0; i < 5; i++) {
-		var recentIElement = document.getElementById("recent" + i);
-		var recentStop = getRouteDirectionStopActiveDotI(i);
-		if(recentStop == null) {
-			recentIElement.hidden = true;
-			recentIElement.classList.add("hidden");
-		} else {
-			recentIElement.hidden = false;
-			recentIElement.classList.remove("hidden");
-			
-			//	<li id="recent0" onclick="selectRecent(0);">&nbsp;</li>
-			var outListItem = recentStop.route + " - " + directionAsString(recentStop.direction) + " - " + recentStop.stop;
-			recentIElement.innerHTML = outListItem;			
-		}
-	}
-}
-*/
 
 // example: var s = directionAsString(recentStop.direction);
 function directionAsString(direction) {
@@ -1120,13 +973,6 @@ function directionAsString(direction) {
 	// console.log("directionAsString()  direction=" + direction);
 	return ((direction == 1) ? "S" : (direction == 2) ? "E" : (direction == 3) ? "W" : (direction == 4) ? "N" : "?");
 }
-
-//function selectRecent(item) {
-//	var itemStop = getRouteDirectionStopActiveDotI(item);
-//	if(itemStop != null) {
-//		getDepartures(itemStop.route, itemStop.direction, itemStop.stop);
-//	}
-//}
 
 function getRouteDirectionStopActiveDotI(i) {
 	var fullKey = '' + i;
@@ -1141,13 +987,6 @@ function getRouteDirectionStopActiveDotI(i) {
 }
 
 // Where a = line point 1; b = line point 2; c = point to check against.
-//public bool isLeft(Point a, Point b, Point c){
-//     return ((b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x)) > 0;
-//}
-
-// claim is that this is slightly better
-//     return (b.x - a.x)*(c.y - a.y) > (b.y - a.y)*(c.x - a.x);
-
 function isLeftOfLine(pointAOnLine, pointBOnLine, pointC) {
 	return (pointBOnLine.longitude - pointAOnLine.longitude)*(pointC.latitude - pointAOnLine.latitude) > (pointBOnLine.latitude - pointAOnLine.latitude)*(pointC.longitude - pointAOnLine.longitude);
 }
@@ -1458,16 +1297,7 @@ function timeSince(when) { // this ignores months
 
 // -------------------------------- local storage -- start
 // see http://diveintohtml5.info/storage.html
-
-// function setDbValue(name, setting) {
-//     if (!db1.supports_html5_storage) { return false; }
-//     localStorage["BusSchedule." + name] = setting;
-// 	return true;
-// }
-// function getDbValue(name) {
-// 	if (!db1.supports_html5_storage) { return null; }
-//     return localStorage["BusSchedule." + name];
-// }
+// see "class DbTables" in this doc
 
 function getDbSize() {
 	if (localStorage && !localStorage.getItem('size')) {
@@ -1514,7 +1344,13 @@ function showDatabase() {
 	}
 }
 
-// console.log("localStorage size=" + getDbSize());	
+function showDbSize() {
+	var dbSize = getDbSize();
+	if(isDebugging) {
+		console.log("localStorage size=" + getDbSize());	
+	}
+	alert("localStorage size is " + dbSize);
+}
 // -------------------------------- local storage -- end
 
 function visitAllRoutes() {
@@ -1816,9 +1652,7 @@ function selectRecentChoice(i) {
 function deleteRecentChoice(i) {
 	isPartOfDeleteRecentChoice = true;
 
-	// remove element at j
-	// tblRecentChoice.removeByKey(i);
-	for(var j=i; j < 5; j++) {
+	for(var j=i; j < buttonMax; j++) {
 		var tempVal = tblRecentChoice.getByKey('' + (j + 1));
 		if(tempVal == null) {
 			tblRecentChoice.removeByKey(j);
@@ -1828,12 +1662,6 @@ function deleteRecentChoice(i) {
 		}
 	}
 	resetRecentChoiceButtons();
-	// for the remaining elements move them up (towards zero)
-	
-	// resetRecentChoiceButtons
-	// isPartOfDeleteRecentChoice = true;
-	//alert('delete i=' + i);
-	// return true;
 }
 
 // refactor the scheduledStopButtons and numberedStopButtons into a common group of buttons
@@ -1849,7 +1677,7 @@ function resetRecentChoiceButtons() {
 	//see:  resetRecentButtons();
 	//see:  resetRecentNumberedStopButtons();
 	// spin through the 
-	for(var i=0; i < 5; i++) {
+	for(var i=0; i < buttonMax; i++) {
 		var recentIElement = document.getElementById("recentChoice" + i);
 		var recentValue = tblRecentChoice.getByKey("" + i);
 		// rather than prepopulate hidden controls, maybe it would be better to add them as needed.
@@ -1904,7 +1732,7 @@ function rotateRecentChoices(recent) {
 	var matchedChoice = null;
 	var matchIndex = -1;
 	var emptyIndex = -1;
-	for(var i=0; i < 5; i++) {
+	for(var i=0; i < buttonMax; i++) {
 		var choiceRawI = tblRecentChoice.getByKey("" + i);
 		if(choiceRawI == null) {
 			if(emptyIndex == -1) {
@@ -1943,13 +1771,13 @@ function rotateRecentChoices(recent) {
 			// showRecentNumberedStop(emptyIndex, recent.description);
 		} else {
 			// drop the oldest Choice   drop 0, copy 1 to 0, 2 to 1, ... 4 to 3, add in 4
-			for(var i=1; i < 5; i++) {
+			for(var i=1; i < buttonMax; i++) {
 				var tempRaw = tblRecentChoice.getByKey('' + i);
 				// var temp = JSON.parse(tempRaw);
 				tblRecentChoice.setByKey('' + (i - 1), tempRaw);   // uses object
 				//showRecentNumberedStop(i, temp.description);
 			}
-			tblRecentChoice.setByKey('' + 4, JSON.stringify(recent));   // uses object
+			tblRecentChoice.setByKey('' + (buttonMax - 1), JSON.stringify(recent));   // uses object
 		}
 	}
 }
@@ -1973,25 +1801,16 @@ function rotateRecentChoices(recent) {
 		<!-- Collection of nav links and other content for toggling -->
 		<div id="navbarCollapse" class="collapse navbar-collapse">
 			<ul class="nav navbar-nav">
-				<!--
-				<li id="recent0" class="active btn btn-default hidden" onclick="selectRecent(0);">&nbsp;</li>
-				<li id="recent1" class="active btn btn-default hidden" onclick="selectRecent(1);">&nbsp;</li>
-				<li id="recent2" class="active btn btn-default hidden" onclick="selectRecent(2);">&nbsp;</li>
-				<li id="recent3" class="active btn btn-default hidden" onclick="selectRecent(3);">&nbsp;</li>
-				<li id="recent4" class="active btn btn-default hidden" onclick="selectRecent(4);">&nbsp;</li>
-				<li class="divider btn hidden" />
-				<li id="recentStop0" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(0);">&nbsp;</li>
-				<li id="recentStop1" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(1);">&nbsp;</li>
-				<li id="recentStop2" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(2);">&nbsp;</li>
-				<li id="recentStop3" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(3);">&nbsp;</li>
-				<li id="recentStop4" class="active btn btn-default hidden" onclick="selectRecentNumberedStop(4);">&nbsp;</li>
-				<li class="divider btn hidden" />				
-				-->
 				<li id="recentChoice0" class="active btn btn-default hidden" onclick="selectRecentChoice(0);">&nbps;</li>
 				<li id="recentChoice1" class="active btn btn-default hidden" onclick="selectRecentChoice(1);">&nbps;</li>
 				<li id="recentChoice2" class="active btn btn-default hidden" onclick="selectRecentChoice(2);">&nbps;</li>
 				<li id="recentChoice3" class="active btn btn-default hidden" onclick="selectRecentChoice(3);">&nbps;</li>
 				<li id="recentChoice4" class="active btn btn-default hidden" onclick="selectRecentChoice(4);">&nbps;</li>
+				<li id="recentChoice5" class="active btn btn-default hidden" onclick="selectRecentChoice(5);">&nbps;</li>
+				<li id="recentChoice6" class="active btn btn-default hidden" onclick="selectRecentChoice(6);">&nbps;</li>
+				<li id="recentChoice7" class="active btn btn-default hidden" onclick="selectRecentChoice(7);">&nbps;</li>
+				<li id="recentChoice8" class="active btn btn-default hidden" onclick="selectRecentChoice(8);">&nbps;</li>
+				<li id="recentChoice9" class="active btn btn-default hidden" onclick="selectRecentChoice(9);">&nbps;</li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<div class="dropdown">
@@ -2002,9 +1821,10 @@ function rotateRecentChoices(recent) {
 							<li class="btn btn-primary" id="utilClearTracking" onclick="clearTracking()">Clear tracking</li>
 							<li class="divider"></li>
 							<li class="btn btn-warning" id="utilGetGps"       onclick="getGps()">Show my location</li>
-							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
 							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
+							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
 							<li class="divider"></li>
+							<li class="btn btn-warning" id="utilGetDbSize"   onclick="showDbSize();">Local storage size</li>
 							<li class="btn btn-danger" id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
 						</ul>
 				</div>
@@ -2012,11 +1832,6 @@ function rotateRecentChoices(recent) {
 		</div>
 	</div>
 </nav>
-<!--
-<div id="separator" class="hr" style="display: none;" > 
-	<hr>
-</div>
--->
 <div class="panel-group" id="accordionMap">
 
   <div class="panel panel-default">
