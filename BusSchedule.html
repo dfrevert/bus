@@ -36,12 +36,21 @@ div#id00C button.btn.btn-primary {
 	-webkit-animation-name: greenToRed;
 	-webkit-animation-duration: 60s;
 }
+
+/* gaps between buttons in the Pick Route panel */
+#routeButtonGroup button.btn.btn-primary.col-md-1,
+#routeDirectionButtonGroup button.btn.btn-primary,
+#routeDirectionStopButtonGroup button.btn.btn-primary {
+	margin-right: 5px; 
+	margin-bottom: 7px;
+}
+
 </style>
 
 <script type="text/javascript">
 "use strict";
 
-var version = '20171231_1353';
+var version = '20180101_1201';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
