@@ -45,29 +45,22 @@ div#id00C button.btn.btn-primary {
 	margin-bottom: 7px;
 }
 
+/* gaps between collapse panel/buttons */
+.panel,
+.panel-group {
+	margin-bottom: 0;
+}
+
 </style>
 
 <script type="text/javascript">
 "use strict";
 
-var version = '20180104_2055';
+var version = '20180116_2038';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
-// attempt to use indexedDB, back to localStorage
-
-//if (!window.indexedDB) {
-//    window.alert("Your browser doesn't support a stable version of IndexedDB. Such and such feature will not be available.");
-//}
-
-//Modernizr.on('indexeddb', function(result) {
-//  if (result) {
-//    console.log("indexedDb is supported."); // supported
-//  } else {
-//    console.log("indexedDb is NOT supported."); // not-supported
-//  }
-//});
 if(isDebugging) {
 	if (Modernizr.localstorage) {
 		console.log("localStorage is supported."); // supported
@@ -199,13 +192,6 @@ var tblRouteDirectionStops = new DbTable(db1, 'RouteDirectionStops');
 var tblStop = new DbTable(db1, 'Stop');
 var tblRecentChoice = new DbTable(db1, 'RecentChoice');
 
-// db1.getByKey('o99999')
-// db1.getByKey("ActiveNumberedBusStop")
-// db1.getByKey("ActiveScheduledBusStop")
-// db1.getByKey("RouteDirectionStopActive")
-// db1.getByKey("BusStopNumberEntered")
-// db1.getByKey("Routes")
-
 // ---------------- localStorage as object -- end
 
 
@@ -245,6 +231,23 @@ function getRouteDirectionStopActive() {
 	return JSON.parse(raw);
 }
 
+function logAjax(xmlHttp, description) {
+	if(isDebugging) {
+		console.log("logAjax(xmlHttp, " + description + ")  .readyState=" + xmlHttp.readyState + "   .status=" + xmlHttp.status);
+	}
+	if(description.substring(0,16) == "showBusLocation2") {
+		var progress = document.getElementById("mapProgress");
+		progress.style.width = (xmlHttp.readyState * 25)  + "%";
+		progress.className = "progress-bar " + ((xmlHttp.readyState == 4) ? "progress-bar-success" : "progress-bar-danger");
+	}
+	if(description.substring(0,8) == "showStop" || description.substring(0,8) == "getDepar") {
+		var progress = document.getElementById("detailsProgress");
+		progress.style.width = (xmlHttp.readyState * 25)  + "%";
+		progress.className = "progress-bar " + ((xmlHttp.readyState == 4) ? "progress-bar-success" : "progress-bar-danger");
+	}
+}
+
+
 function showStop(stopNumber) {
 	saveNumberedBusStopInfo(stopNumber);
 
@@ -252,6 +255,8 @@ function showStop(stopNumber) {
 	var url2 = "https://svc.metrotransit.org/NexTrip/" + stopNumber.toString() + "?format=json";
 	
 	xmlhttp2.onreadystatechange=function() {
+		logAjax(xmlhttp2, "showStop(" + stopNumber + ")" );
+	
 		if (xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
 			var myArr = JSON.parse(xmlhttp2.responseText);
 			buildStopResults(myArr);
@@ -387,6 +392,8 @@ function showBusLocation2(route, blockNumber) {
 	}
 	
 	xmlhttp8.onreadystatechange=function() {
+		logAjax(xmlhttp8, "showBusLocation2(" + route + ", " + blockNumber + ")" );
+	
 		if (xmlhttp8.readyState == 4 && xmlhttp8.status == 200) {
 			populateVehicleLocations2(route, blockNumber, xmlhttp8.responseText);
 		}
@@ -428,6 +435,8 @@ function rewriteActualTableData(route, blockNumber) {
 	var busLastAt = JSON.parse(tblVehicleLocation.getByKey('' + route + '.' + blockNumber));
 	var busLocationTime = fromDateString(busLastAt.locationTime);
 	
+	myBlockNumber = blockNumber;
+	
 	addMarker({"route":route, "blockNumber":blockNumber, "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
 	
 	var now = new Date();
@@ -437,10 +446,10 @@ function rewriteActualTableData(route, blockNumber) {
 	//                is an indication that the local clock and the Server clock differ
 	//                need to save an offset value.
 	if(secondsElapsed < 0 && secondsElapsedOffset < 60) {
-		// console.log("secondsElapsedOffset=" + secondsElapsedOffset);
-		// console.log("secondsElapsed=" + secondsElapsed);
 		secondsElapsedOffset = -secondsElapsed + secondsElapsedOffset;
-		// console.log("secondsElapsedOffset=" + secondsElapsedOffset + " adjusted");
+		if(isDebugging) {
+			console.log("secondsElapsedOffset=" + secondsElapsedOffset + " adjusted");
+		}
 	}
 	secondsElapsed = secondsElapsed + secondsElapsedOffset;
 	
@@ -476,20 +485,19 @@ function rewriteActualTableData(route, blockNumber) {
 		}
 	}
 	if(busStopPoint == null) {
-		// console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
+		if(isDebugging) {
+			console.log("rewriteActualTableData(" + route + ", " + blockNumber + ") called, activeNumberedBusStop db value is Null!");
+		}
 		return;
 	}
 
 	var milesAway = miles(busAtPoint, busStopPoint);
-	
 	s += milesAndDirection(milesAway);
-	
 	s += '<br>bus: ' + markupBlockNumberButton(blockNumber);
 	
 	var actualRouteBlockNumber = document.getElementById("Actual_" + route + "_" + blockNumber);
 	if(actualRouteBlockNumber != null) {
 		actualRouteBlockNumber.innerHTML = s; 
-		// console.log("Created the busNumberClicked button with blockNumber=" + blockNumber);
 	}
 }
 
@@ -526,6 +534,8 @@ function selectRoute() {
 	var url3 = "https://svc.metrotransit.org/NexTrip/Routes?format=json";
 
 	xmlhttp3.onreadystatechange=function() {
+		logAjax(xmlhttp3, "selectRoute()" );
+	
 		if (xmlhttp3.readyState == 4 && xmlhttp3.status == 200) {
 			populateRoutes(xmlhttp3.responseText);
 			db1.setByKey("Routes", xmlhttp3.responseText);
@@ -556,13 +566,11 @@ $('#routeButtonGroup button').click(function() {
 
 
 function busNumberClicked2(blockNumber, routeNumber) {
-	// console.log("busNumberClicked2(" + blockNumber + ", " + routeNumber + ");");
 	myRoute = routeNumber;
 	
 	if(map == null) {
 		var targetStop = getActiveNumberedBusStop();
 		if(targetStop != null) {
-			// console.log("busNumberClicked2 line 374, targetStop=" + JSON.stringify(targetStop) + "  calling initializeMap2(targetStop).");
 			myBlockNumber = blockNumber;
 			initializeMap2(targetStop);
 		}
@@ -574,15 +582,14 @@ function busNumberClicked2(blockNumber, routeNumber) {
 
 function busNumberClicked(blockNumber) {
 	if(myBlockNumber == blockNumber) {
-		// console.log("busNumberClicked  myBlockNumber=" + myBlockNumber + " blockNumber=" + blockNumber);
-		// showBusLocation2(myRoute, blockNumber);
 		if(map == null) {
-			// console.log("busNumberClicked(" + blockNumber + ")  myBlockNumber=" + myBlockNumber + " myStop=" + myStop);
 			var stop = tblStop.getByKey(myStop);
 			if(stop != null) {
 				var stopMine = JSON.parse(stop);
 				initializeMap2(stopMine);
-				console.log("busNumberClicked line 403, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+				if(isDebugging) {
+					console.log("busNumberClicked line 403, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+				}
 			}
 		}
 		showBusLocation2(myRoute, blockNumber);
@@ -602,18 +609,14 @@ function busNumberClicked(blockNumber) {
 			var i;
 			for(i = 0; i < arr.length; i++) {
 				if(arr[i].BlockNumber == blockNumber) {
-					// console.log("busNumberClicked  i=" + i + " blockNumber=" + blockNumber);
-
 					var newValue = JSON.stringify(arr[i]);	
 					var isOk = tblVehicleTracked.setByKey(blockNumber, newValue);
-					// console.log("busNumberClicked  tblVehicleTracked.setByKey(" + blockNumber + ", newValue)" + " isOk=" + isOk + "  newValue=" + newValue);
 					
 					if(map == null) {
 						var stop = tblStop.getByKey(myStop);
 						if(stop != null) {
 							var stopMine = JSON.parse(stop);
 							initializeMap2(stopMine);
-							// console.log("busNumberClicked, stopMine=" + stopMine + " initializeMap2 called.");
 						}
 					}
 				}
@@ -667,6 +670,8 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 	// one of 2 possible settings   ns or ew, each will cause the UI to show 2 buttons.
 
 	xmlhttp4.onreadystatechange=function(shouldCreateButton) {
+		logAjax(xmlhttp4, "selectRouteDirections2(" + route + ", " + shouldCreateButton + ", " + shouldPopulate + ")" );
+
 		if (xmlhttp4.readyState == 4 && xmlhttp4.status == 200) {
 			if(shouldCreateButton) {
 				populateRouteDirections(route, xmlhttp4.responseText);
@@ -701,8 +706,9 @@ function routeDirectionClicked(route, direction) {
 
 	document.getElementById('selectedDirection').innerHTML = '&nbsp;:&nbsp;' + directionAsString(direction) + '&nbsp;&nbsp;&nbsp;';
 
-	// console.log("myRoute=" + myRoute);
-	// console.log("myDirection=" + myDirection);
+	if(isDebugging) {
+		console.log("routeDirectClicked(" + route + ", " + direction + ")  myRoute=" + myRoute + "  myDirection=" + myDirection);
+	}
  	selectRouteDirectionStops(route, direction);
 }
 
@@ -731,6 +737,7 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 	var url5 = "https://svc.metrotransit.org/NexTrip/Stops/" + route + "/" + direction + "?format=json";
 
 	xmlhttp5.onreadystatechange=function(shouldCreateButtons) {
+		logAjax(xmlhttp5, "selectRouteDirectionStops2(" + route + ", " + direction + ", " + shouldCreateButtons + ")" );
 		if (xmlhttp5.readyState == 4 && xmlhttp5.status == 200) {
 			if(shouldCreateButtons) {
 				populateRouteDirectionStops(route, direction, xmlhttp5.responseText)
@@ -751,7 +758,7 @@ function populateRouteDirectionStops(route, direction, responseText) {
 		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
 	}
     out += "</div>";
-	// console.log("out=" + out);
+
 	var id00Route = document.getElementById("id00RouteDirectionStop");
     id00Route.innerHTML = out;
 	id00Route.style.display = "block";
@@ -774,13 +781,13 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 
 // --------------------- Departures
 function getDepartures(route, direction, stop) {
-	//  Sensitive to whether the stop has times scheduled
+	//  Scheduled stops
 
 	var xmlhttp6 = new XMLHttpRequest();
 	var url6 = "https://svc.metrotransit.org/NexTrip/" + route + "/" + direction + "/" + stop + "?format=json";
-	// console.log("url6=" + url6);
 	
 	xmlhttp6.onreadystatechange=function() {
+		logAjax(xmlhttp6, "getDepartures(" + route + ", " + direction + ", " + stop + ")" );
 		if (xmlhttp6.readyState == 4 && xmlhttp6.status == 200) {
 			populateDepartures(route, direction, stop, xmlhttp6.responseText)
 		}
@@ -818,7 +825,6 @@ function populateDepartures(route, direction, stop, responseText) {
 			}
 		}
 		shouldShowTrackedBus = !hasBlockNumberMatch;
-		// console.log("populateDepartures  myBlockNumber:" + myBlockNumber + ", shouldShowTrackedBus:" + shouldShowTrackedBus);
 		
 		if(shouldShowTrackedBus) {
 			// need to be able to add based on a saved row, 
@@ -1455,7 +1461,7 @@ function initializeMap() { return initializeMap2(currentDeviceGps); }
 function initializeMap2(position) {
 	if(position == null || position.latitude == null) {return;}
 
-	if(document.getElementById("map_canvas").hidden) {return;}
+	if(window.getComputedStyle(document.getElementById("collapseMap"), null).getPropertyValue("display") == "none") {return;}
 	
     var latlng = new google.maps.LatLng(position.latitude, position.longitude);
     var myOptions = {
@@ -1475,7 +1481,9 @@ function initializeMap2(position) {
 }
 
 function addBlockButtonToMapTitle() {
-	// console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + myBlockNumber);
+	if(isDebugging) {
+		console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + myBlockNumber);
+	}
 	var divInTitle = document.getElementsByClassName("map-title");
 	var markup = markupBlockNumberButton(myBlockNumber);
 	markup = markup.replace(' onclick', ' style="margin-left: 30%; margin-right: 20%" onclick');
@@ -1490,64 +1498,6 @@ function addResetButtonToMapTitle() {
 		if(divInTitle != null) {
 			divInTitle[0].innerHTML = divInTitle[0].innerHTML + 
 				'<button type="button" class="btn btn-primary btn-sm" style="margin-right: 10%;" onclick="clearTracking()">Reset Map</button>';
-		}
-	}
-}
-
-// addMarker(" + stopNumber + ", " + blockNumber + ", " + row + ");
-function addMarkerForStop(stopNumber, blockNumber, rowId) {
-	if(isDebugging) {
-		console.log("addMarkerForStop  stopNumber=" + stopNumber + " blockNumber=" + blockNumber + " rowId=" + rowId + "  departuresByStopNumber(" + rowId + ")=" + JSON.stringify(departuresByStopNumber[rowId]));
-	}
-	
-	var row = departuresByStopNumber[rowId];
-	var current = new google.maps.LatLng(row.VehicleLatitude, row.VehicleLongitude);
-	
-	var activeStop = getActiveNumberedBusStop();
-	if(activeStop != null) {
-		var isAlreadyAdded = false;
-		// where did markers come from? global variable
-		for (var i = 0; i < markers.length; i++) {
-			if (activeStop.latitude === markers[i].position.lat() && activeStop.longitude === markers[i].position.lng()) {
-				isAlreadyAdded = true;
-			}
-		}
-		if(!isAlreadyAdded) {
-		
-			// if map is null, create one
-			if(map == null) {
-				//console.log("map is null.  addMarkerForStop(stopNumber, blockNumber, rowId)");
-				if(activeStop != null) {
-					//console.log("create map, activeNumberedStop = " + JSON.stringify(activeStop));
-					initializeMap2(activeStop);
-				} else {
-					//console.log("create map, current = " + JSON.stringify(current));
-					initializeMap2(current);
-				}
-			}	
-		
-			if(map == null) {
-				return;
-			}
-		
-			var latLngBusStop = new google.maps.LatLng(activeStop.latitude, activeStop.longitude);
-			var	marker = new google.maps.Marker({
-				map: map,
-				position: latLngBusStop,
-				icon: {
-					path: google.maps.SymbolPath.SQUARE,
-					scale: 5
-					}
-			});
-			markers.push(marker);
-
-			markers[markers.length - 1]['infowin'] = new google.maps.InfoWindow({
-				content: '<div>stop #:' + activeStop.StopNumber + '</div>'
-			});
-			
-			google.maps.event.addListener(markers[markers.length - 1], 'click', function() {
-				this['infowin'].open(map, this);
-			});
 		}
 	}
 }
@@ -1791,6 +1741,11 @@ function rotateRecentChoices(recent) {
 	}
 }
 
+function toggleDebug() {
+	isDebugging = !isDebugging;
+	document.getElementById("utilDebugging").innerText = "Toggle debug " + (isDebugging ? "off" : "on");
+}
+
 </script>
 </head>
 
@@ -1821,8 +1776,9 @@ function rotateRecentChoices(recent) {
 							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
 							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
 							<li class="divider"></li>
+							<li class="btn btn-warning" id="utilDebugging"   onclick="toggleDebug();">Toggle debug</li>
 							<li class="btn btn-warning" id="utilGetDbSize"   onclick="showDbSize();">Local storage size</li>
-							<li class="btn btn-danger" id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
+							<li class="btn btn-danger"  id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
 						</ul>
 				</div>
 			</ul>
@@ -1834,16 +1790,16 @@ function rotateRecentChoices(recent) {
 	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
     <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseChoices" data-parent="#accordionMap" >Previous Choices</div>
    	  <div id="collapseChoices" class="panel-collapse collapse in container">
-		<span id="recentChoice0" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(0);">&nbps;</span>
-		<span id="recentChoice1" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(1);">&nbps;</span>
-		<span id="recentChoice2" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(2);">&nbps;</span>
-		<span id="recentChoice3" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(3);">&nbps;</span>
-		<span id="recentChoice4" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(4);">&nbps;</span>
-		<span id="recentChoice5" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(5);">&nbps;</span>
-		<span id="recentChoice6" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(6);">&nbps;</span>
-		<span id="recentChoice7" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(7);">&nbps;</span>
-		<span id="recentChoice8" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(8);">&nbps;</span>
-		<span id="recentChoice9" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(9);">&nbps;</span>
+		<span id="recentChoice0" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(0);">&nbsp;</span>
+		<span id="recentChoice1" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(1);">&nbsp;</span>
+		<span id="recentChoice2" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(2);">&nbsp;</span>
+		<span id="recentChoice3" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(3);">&nbsp;</span>
+		<span id="recentChoice4" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(4);">&nbsp;</span>
+		<span id="recentChoice5" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(5);">&nbsp;</span>
+		<span id="recentChoice6" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(6);">&nbsp;</span>
+		<span id="recentChoice7" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(7);">&nbsp;</span>
+		<span id="recentChoice8" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(8);">&nbsp;</span>
+		<span id="recentChoice9" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(9);">&nbsp;</span>
 	  </div>
 	</div>
   </div>
@@ -1851,8 +1807,13 @@ function rotateRecentChoices(recent) {
 	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
     <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseDetails">Details</div>
 	<div id="collapseDetails" class="panel-collapse collapse in">
-	  <div id="detailsPanel" class="panel-body">
-		<div id="id00C"></div>
+	  <div id="detailsPanel" class="panel-body" style="padding-top:0;">
+	  <div class="progress" style="height:2px; padding:0; margin-bottom:0; margin-top:0;">
+		<div id="detailsProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
+		  <!-- <span class="sr-only">70% Complete</span> -->
+		</div>
+	  </div>
+	  <div id="id00C"></div>
 		<div id="id00B"></div>
 	  </div>
 	</div>
@@ -1925,6 +1886,11 @@ function rotateRecentChoices(recent) {
     <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseMap">Map</div>
 	<div id="collapseMap" class="panel-collapse collapse">
 	  <div id="map_button" class="panel-body-sm map-title"></div>
+	  <div class="progress" style="height:2px; padding:0; margin-bottom:0;">
+		<div id="mapProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
+		  <!-- <span class="sr-only">70% Complete</span> -->
+		</div>
+	  </div>
 	  <div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
 	</div>
   </div>
