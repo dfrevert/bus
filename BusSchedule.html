@@ -30,7 +30,8 @@
     95% {background-color: dodgerblue;}
     100% {background-color: blue;}
 }
-div#id00C button.btn.btn-primary {
+div#id00C button.btn.btn-primary,
+#busNumberMapButton {
 	animation-name: greenToRed;
 	animation-duration: 60s;
 	-webkit-animation-name: greenToRed;
@@ -56,7 +57,7 @@ div#id00C button.btn.btn-primary {
 <script type="text/javascript">
 "use strict";
 
-var version = '20180118_1924';
+var version = '20180124_2001';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -265,6 +266,8 @@ function showStop2(enteredStopNumber) {
 }
 
 function showStop(stopNumber) {
+	
+
 	var xmlhttp2 = new XMLHttpRequest();
 	var url2 = "https://svc.metrotransit.org/NexTrip/" + stopNumber.toString() + "?format=json";
 	
@@ -378,15 +381,21 @@ function buildStopResults(arr) {
 	if(targetPoint != null) {
 		document.getElementById("title1").innerHTML = "Bus Schedule " + targetPoint.stopNumber;
 		
-		var newValue = '{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}';
-
-		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(' + newValue + ');" >' + targetPoint.stopNumber + ' - ' + targetPoint.description + '</button>';
+		_numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
+		
+		if(isDebugging) {
+			console.log("buildStopResults(arr) _numberedStopValue=" + JSON.stringify(_numberedStopValue));
+		}
+		
+		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(_numberedStopValue.stopNumber);" >' + targetPoint.stopNumber + ' - ' + targetPoint.description + '</button>';
 		var timeOfQuery = new Date();
 		outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
 		
 		document.getElementById("id00C").innerHTML = outButton;	
 	}
 }
+
+var _numberedStopValue;
 
 // to use:     alert("current time is " + new Date().toHHMMSS());
 Date.prototype.toHHMMSS = function () {
@@ -1497,6 +1506,7 @@ function addBlockButtonToMapTitle() {
 	var divInTitle = document.getElementsByClassName("map-title");
 	var markup = markupBlockNumberButton(myBlockNumber);
 	markup = markup.replace(' onclick', ' style="margin-left: 30%; margin-right: 20%" onclick');
+	markup = markup.replace('button type=', 'button id="busNumberMapButton" type=');
 	divInTitle[0].innerHTML = markup;
 }
 
