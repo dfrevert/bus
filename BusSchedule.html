@@ -57,7 +57,7 @@ div#id00C button.btn.btn-primary,
 <script type="text/javascript">
 "use strict";
 
-var version = '20180124_2001';
+var version = '20180128_1942';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -1527,6 +1527,10 @@ function addMarker(busLocation) {
 		console.log("addMarker(busLocation)  busLocation=" + JSON.stringify(busLocation));
 	}
 	
+	if(markers == null) {
+		markers = [];
+	}
+	
     for (var i = 0; i < markers.length; i++)
 		if (busLocation.latitude === markers[i].position.lat() && busLocation.longitude === markers[i].position.lng()) return;
 
@@ -1578,8 +1582,23 @@ function addMarker(busLocation) {
 		marker = new google.maps.Marker({
 			map: map,
 			position: current,
-			title: "" + busLocation.blockNumber
+			title: "" + busLocation.blockNumber,
+			opacity: 1.0
 		});
+		
+		setInterval(function() {
+			// 0.9375 ok, 0.9 too fast; both fade to less than 10% too fast.
+			var newOpacity = (marker.opacity * 0.8) + 0.10;
+			marker.setOptions({'opacity': newOpacity});
+			if(isDebugging) {
+				console.log("setInterval(function() marker.opacity = " + marker.opacity);
+			}
+		}, 15000);   // 15 seconds
+		
+		setTimeout(function() {
+			marker.setOptions({'opacity': 0.0});
+			marker.setMap(null);
+		}, 20 * 60 * 1000);     // 20 minutes
 	} 
     markers.push(marker);
 
@@ -1601,8 +1620,14 @@ function clearTracking() {
 	tblVehicleLocation.deleteAll();
 	tblVehicleTracked.deleteAll();
 	document.getElementById("map_canvas").innerHTML = "";
+	if(markers != null) {
+		for (var i = 0; i < markers.length; i++) {
+			markers[i].setMap(null);
+		}
+		markers.length = 0;
+		markers = null;
+	}
 	map = null;
-	markers = [];
 }
 
 var isPartOfDeleteRecentChoice = false;
