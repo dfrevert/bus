@@ -1,22 +1,11 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
 	<meta charset="utf-8">
-
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-	
-	<!-- modernizr 3.5, dropping CDN  -->
-	<!-- modernizr/modernizr_localStorage_indexedDb.js -->
-	<!-- modernizr/modernizr_localstorage.js -->
-	<script type='text/javascript' src='modernizr/modernizr.js'></script>
-	<!--                                                 was  2.1.4             -->
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-	<!-- loads if googleapis is not available -->
-	<script>if (typeof jQuery === 'undefined') {
-	  document.write(unescape("%3Cscript src='jquery/jquery-2.2.4.js' type='text/javascript'%3E%3C/script%3E"));
-	}
-	</script>
-
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="stylesheet" href="bootstrap-3.3.7-dist/css/bootstrap.min.css">
+	<script src='modernizr/modernizr.js'></script>
+	<script src="jquery/jquery-3.3.1.min.js"></script>
 <style>
 @keyframes greenToRed {
     0%   {background-color: green;}
@@ -30,6 +19,7 @@
     95% {background-color: dodgerblue;}
     100% {background-color: blue;}
 }
+
 div#id00C button.btn.btn-primary,
 #busNumberMapButton {
 	animation-name: greenToRed;
@@ -51,13 +41,12 @@ div#id00C button.btn.btn-primary,
 .panel-group {
 	margin-bottom: 0;
 }
-
 </style>
 
-<script type="text/javascript">
+<script>
 "use strict";
 
-var version = '20180128_1942';
+var version = '20180330_1408';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -266,8 +255,6 @@ function showStop2(enteredStopNumber) {
 }
 
 function showStop(stopNumber) {
-	
-
 	var xmlhttp2 = new XMLHttpRequest();
 	var url2 = "https://svc.metrotransit.org/NexTrip/" + stopNumber.toString() + "?format=json";
 	
@@ -576,10 +563,10 @@ function populateRoutes(responseText) {
 }
 
 // handle the routeButtonGroup click
-$('#routeButtonGroup button').click(function() {
+$('#routeButtonGroup button').on("click", (function() {
     $(this).addClass('active').siblings().removeClass('active');
 	myRoute = $(this).Value;
-});
+}));
 
 
 function busNumberClicked2(blockNumber, routeNumber) {
@@ -1328,7 +1315,6 @@ function timeSince(when) { // this ignores months
 ;
 
 
-
 // -------------------------------- local storage -- start
 // see http://diveintohtml5.info/storage.html
 // see "class DbTables" in this doc
@@ -1433,6 +1419,11 @@ var currentDeviceGps;   // .coords of success callback of .getCurrentPosition
 
 function getGps() {
     var output = document.getElementById("mapPanelHeadingLabel");
+	
+	if (output == null) {
+		alert("getGps() could not find elementId 'mapPanelHeadingLabel'.");
+		return;
+	}
 
     if (!navigator.geolocation){
         output.innerHTML = '<p class="text-danger">Geolocation is not supported by your browser</p>';
@@ -1588,7 +1579,8 @@ function addMarker(busLocation) {
 		
 		setInterval(function() {
 			// 0.9375 ok, 0.9 too fast; both fade to less than 10% too fast.
-			var newOpacity = (marker.opacity * 0.8) + 0.10;
+			// var newOpacity = (marker.opacity * 0.8) + 0.10;    // needs to fade more as a final  0.46 seems to be the minimum
+			var newOpacity = (marker.opacity * 0.8) + 0.08;
 			marker.setOptions({'opacity': newOpacity});
 			if(isDebugging) {
 				console.log("setInterval(function() marker.opacity = " + marker.opacity);
@@ -1815,9 +1807,11 @@ function toggleDebug() {
 						Utils<span class="caret"></span>
 					</li>
 						<ul class="dropdown-menu" >
-							<li class="btn btn-primary" id="utilClearTracking" onclick="clearTracking()">Clear tracking</li>
+							<li class="btn btn-primary" id="utilClearTracking" onclick="clearTracking()">Reset Map</li>
 							<li class="divider"></li>
+							<!--
 							<li class="btn btn-warning" id="utilGetGps"       onclick="getGps()">Show my location</li>
+							-->
 							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
 							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
 							<li class="divider"></li>
@@ -1945,7 +1939,7 @@ function toggleDebug() {
   
 </div>
 
-<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script type="text/javascript" src="bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
 
 <script type="text/javascript">
