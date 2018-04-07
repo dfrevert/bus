@@ -3,10 +3,17 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<link rel="stylesheet" href="bootstrap-3.3.7-dist/css/bootstrap.min.css">
+
+	<title>Bus Schedule</title>
+
+	<link rel="stylesheet" href="bootstrap-4.0.0-dist/css/bootstrap.min.css">
+	<link rel="stylesheet" href="bootstrap-4.0.0-dist/css/bootstrap-grid.min.css">
+	<link rel="stylesheet" href="bootstrap-4.0.0-dist/css/bootstrap-reboot.min.css">
+
 	<script src='modernizr/modernizr.js'></script>
 	<script src="jquery/jquery-3.3.1.min.js"></script>
 <style>
+
 @keyframes greenToRed {
     0%   {background-color: green;}
     45%  {background-color: green;}
@@ -24,8 +31,8 @@ div#id00C button.btn.btn-primary,
 #busNumberMapButton {
 	animation-name: greenToRed;
 	animation-duration: 60s;
-	-webkit-animation-name: greenToRed;
-	-webkit-animation-duration: 60s;
+	/* -webkit-animation-name: greenToRed; */
+	/* -webkit-animation-duration: 60s;    */
 }
 
 /* gaps between buttons in the Pick Route panel */
@@ -37,8 +44,8 @@ div#id00C button.btn.btn-primary,
 }
 
 /* gaps between collapse panel/buttons */
-.panel,
-.panel-group {
+/* panel becomes card, panel-group has no replacement */
+.card {
 	margin-bottom: 0;
 }
 </style>
@@ -46,7 +53,7 @@ div#id00C button.btn.btn-primary,
 <script>
 "use strict";
 
-var version = '20180330_1408';
+var version = '20180407_1634';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -335,7 +342,10 @@ function buildStopResults(arr) {
 	}
 
     var i;
-	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
+
+	var out = "<div><table class=\"table table-sm table-responsive-sm table-bordered\"><tr><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
+
+//	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
 
 	var targetPoint = getActiveNumberedBusStop();
 	
@@ -383,7 +393,6 @@ function buildStopResults(arr) {
 }
 
 var _numberedStopValue;
-
 // to use:     alert("current time is " + new Date().toHHMMSS());
 Date.prototype.toHHMMSS = function () {
 	// want everything up to the first space
@@ -552,10 +561,12 @@ function selectRoute() {
 function populateRoutes(responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	var out = '<div id="routeButtonGroup" class="btn-group btn-group-md-1" >';
+	// var out = '<div id="routeButtonGroup" class="btn-group btn-group-md-1" >';
+	var out = '<div id="routeButtonGroup" >';
 	var j = 0;
     for(i = 0; i < arr.length; i++) {
-		out += '<button type="button" class="btn btn-primary col-md-1" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
+		// out += '<button type="button" class="btn btn-primary col-md-1" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
+		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
 	}
     out += "</div>";
     document.getElementById("id00RouteDirectionStop").innerHTML = out;
@@ -592,7 +603,7 @@ function busNumberClicked(blockNumber) {
 				var stopMine = JSON.parse(stop);
 				initializeMap2(stopMine);
 				if(isDebugging) {
-					console.log("busNumberClicked line 403, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+					console.log("busNumberClicked line 614, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
 				}
 			}
 		}
@@ -690,9 +701,10 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 function populateRouteDirections(route, responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	var out = '<div id="routeDirectionButtonGroup" class="btn-group" >';
+	// var out = '<div id="routeDirectionButtonGroup" class="btn-group" >';
+	var out = '<div id="routeDirectionButtonGroup">';
     for(i = 0; i < arr.length; i++) {
-		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionClicked(' + route + ', ' + arr[i].Value + ')" >' + arr[i].Text + '</button>';
+		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeDirectionClicked(' + route + ', ' + arr[i].Value + ')" >' + arr[i].Text + '</button>';
 	}
     out += "</div>";
     document.getElementById("id00RouteDirectionStop").innerHTML = out;
@@ -756,10 +768,12 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 function populateRouteDirectionStops(route, direction, responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
+	// var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
+	var out = '<div id="routeDirectionStopButtonGroup">';
     for(i = 0; i < arr.length; i++) {
 		// out += '<button type="button" class="btn btn-primary col-md-6 col-sm-4" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
-		out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
+		// out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
+		out += '<button type="button" class="btn btn-primary" style="margin-right: 6px; margin-bottom: 6px;" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
 	}
     out += "</div>";
 
@@ -818,7 +832,8 @@ function populateDepartures(route, direction, stop, responseText) {
 	isCurrentTargetANumberedBusStop = false;
 	
 	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
-	var out = '<div class="table-responsive"><table class="table table-bordered"><tr class="table-row table-header"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
+	// var out = '<div class="table-responsive"><table class="table table-bordered"><tr class="table-row table-header"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
+	var out = '<div><table class="table table-sm table-responsive-sm table-bordered"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
 	
 	// a tracked bus number, could disappear from these results, even though it has not reached the stop
 	//     need to detect that the tracked bus number is not in the results
@@ -854,7 +869,8 @@ function populateDepartures(route, direction, stop, responseText) {
 						}
 					}
 
-					out += '<tr class="table-row">' + '<td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
+					// out += '<tr class="table-row">' + '<td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
+					out += '<tr><td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
 
 					pI.Route + pI.Terminal +
 					"</td><td>" +
@@ -892,7 +908,8 @@ function populateDepartures(route, direction, stop, responseText) {
 			milesAndDirectionLetter = milesAndDirection(milesAway);
 		}
 
-		out += '<tr class="table-row">' + 
+		// out += '<tr class="table-row">' + 
+		out += '<tr>' + 
 		((arr[i].Actual == null || !arr[i].Actual) ? '<td>' : '<td id="Actual_' + route + '_' + arr[i].BlockNumber + '" class="bg-success" >') + 
 		arr[i].Actual +
 		'</td><td>' +
@@ -1662,13 +1679,20 @@ function deleteRecentChoice(i) {
 
 // refactor the scheduledStopButtons and numberedStopButtons into a common group of buttons
 // target:
-// target:    <li id="recentChoice0" class="active btn btn-default" onclick="selectRecentChoice(0);">
+// target:    <li id="recentChoice0" class="active btn btn-secondary" onclick="selectRecentChoice(0);">
 // target:    	<div class="input-group-btn" >
-// target:    	  <button class="active btn btn-default"            type="button" >Bus 22222 - 12345</button>
-// target:    	  <button class="active btn btn-default btn-danger" type="button" onclick="deleteRecentChoice(0);">X</button>
+// target:    	  <button class="active btn btn-secondary"            type="button" >Bus 22222 - 12345</button>
+// target:    	  <button class="active btn btn-secondary btn-danger" type="button" onclick="deleteRecentChoice(0);">X</button>
 // target:    	</div>
 // target:    </li>
 // target:
+//           // bootstrap 4 target
+// target:    <div id="recentChoice999b" class="active input-group">
+// target:    	  <button class="active btn btn-secondary"                 type="button" onclick="alert('recentChoice999b button'); selectRecentChoice(0);">Bus 22222 - 12345</button>
+// target:    	  <button class="active btn btn-danger input-group-append" type="button" onclick="alert('recentChoice999b delete'); deleteRecentChoice(0);">X</button>
+// target:    </div>
+
+
 function resetRecentChoiceButtons() {
 	//see:  resetRecentButtons();
 	//see:  resetRecentNumberedStopButtons();
@@ -1694,12 +1718,12 @@ function resetRecentChoiceButtons() {
 			if(parsedRecentChoice.stop != null) {
 				buttonText = parsedRecentChoice.route + ' - ' + directionAsString(parsedRecentChoice.direction) + ' - ' + parsedRecentChoice.stop;
 			}
-			var out = '<div class="input-group-btn" >'
-			        + '<button class="active btn btn-default"            type="button" >' 
+			let idTemp = 'recentChoice' + i;
+			// var out = '<div id="' + idTemp + '" class="active input-group" >'
+			var out = '<button class="active btn btn-secondary"                 type="button" onclick="selectRecentChoice(' + i + ');" >' 
 					+ buttonText
                     + '</button>'
-					+ '<button class="active btn btn-default btn-danger" type="button" onclick="deleteRecentChoice(' + i + ');">X</button>'
-					+ '</div>';
+					+ '<button class="active btn btn-danger input-group-append" type="button" onclick="deleteRecentChoice(' + i + ');">X</button>';
 			recentIElement.innerHTML = out;			
 		}
 	}
@@ -1787,163 +1811,155 @@ function toggleDebug() {
 </head>
 
 <body>
+<!-- was
 <nav role="navigation" class="navbar navbar-default navbar-static-top" style="margin-bottom: 5px;" >
-	<div class="container">
-		<!-- Brand and toggle get grouped for better mobile display -->
-		<div class="navbar-header">
-			<button type="button" data-target="#navbarCollapse" data-toggle="collapse" class="navbar-toggle">
-				<span class="sr-only">Toggle navigation</span>
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-			</button>
-			<span class="navbar-brand" id="title1" >Bus Schedule</span>
-		</div>
-		<!-- Collection of nav links and other content for toggling -->
-		<div id="navbarCollapse" class="collapse navbar-collapse">
-			<ul class="nav navbar-nav navbar-right">
-				<div class="dropdown">
-					<li class="btn btn-default dropdown-toggle" data-toggle="dropdown" >
-						Utils<span class="caret"></span>
-					</li>
-						<ul class="dropdown-menu" >
-							<li class="btn btn-primary" id="utilClearTracking" onclick="clearTracking()">Reset Map</li>
-							<li class="divider"></li>
-							<!--
-							<li class="btn btn-warning" id="utilGetGps"       onclick="getGps()">Show my location</li>
-							-->
-							<li class="btn btn-warning" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</li>
-							<li class="btn btn-warning" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</li>
-							<li class="divider"></li>
-							<li class="btn btn-warning" id="utilDebugging"   onclick="toggleDebug();">Toggle debug</li>
-							<li class="btn btn-warning" id="utilGetDbSize"   onclick="showDbSize();">Local storage size</li>
-							<li class="btn btn-danger"  id="utilResetDataase" onclick="resetDatabase()">Delete all local data</li>
-						</ul>
+
+                                                        fixed-top ?
+-->
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+	<span class="navbar-brand" id="title1">Bus Schedule</span>
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+	<div class="collapse navbar-collapse" id="navbarCollapse">
+		<ul class="navbar-nav mr-auto">
+			<li class="nav-item dropdown">
+				<a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" role="button"
+					id="utilDropdown">
+					Utils<span class="caret"></span>
+				</a>
+				<div class="dropdown-menu" >
+					<a class="dropdown-item bg-success" id="utilClearTracking" onclick="clearTracking()">Reset Map</a>
+					<a class="dropdown-item dropdown-divider bg-light"></a>
+					<!--
+					<a class="dropdown-item" id="utilGetGps"       onclick="getGps()">Show my location</a>
+					-->
+					<a class="dropdown-item" id="utilVisitRoutes"  onclick="visitAllRoutes()">Visit all routes</a>
+					<a class="dropdown-item" id="utilWriteStops"   onclick="showDatabase()">Write stops to console</a>
+					<a class="dropdown-item dropdown-divider bg-light"></a>
+					
+					<a class="dropdown-item bg-warning" id="utilDebugging"   onclick="toggleDebug();">Toggle debug</a>
+					<a class="dropdown-item"            id="utilGetDbSize"   onclick="showDbSize();">Local storage size</a>
+					<a class="dropdown-item bg-danger"  id="utilResetDataase" onclick="resetDatabase()">Delete all local data</a>
 				</div>
-			</ul>
-		</div>
+
+			</li>
+		</ul>
 	</div>
 </nav>
-<div class="panel-group" id="accordionMap">
-  <div class="panel panel-default">
-	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
-    <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseChoices" data-parent="#accordionMap" >Previous Choices</div>
-   	  <div id="collapseChoices" class="panel-collapse collapse in container">
-		<span id="recentChoice0" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(0);">&nbsp;</span>
-		<span id="recentChoice1" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(1);">&nbsp;</span>
-		<span id="recentChoice2" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(2);">&nbsp;</span>
-		<span id="recentChoice3" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(3);">&nbsp;</span>
-		<span id="recentChoice4" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(4);">&nbsp;</span>
-		<span id="recentChoice5" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(5);">&nbsp;</span>
-		<span id="recentChoice6" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(6);">&nbsp;</span>
-		<span id="recentChoice7" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(7);">&nbsp;</span>
-		<span id="recentChoice8" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(8);">&nbsp;</span>
-		<span id="recentChoice9" class="active btn btn-default hidden col-md-3 col-sm-4 col-xs-6" onclick="selectRecentChoice(9);">&nbsp;</span>
-	  </div>
-	</div>
-  </div>
-  <div class="panel panel-default">
-	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
-    <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseDetails">Details</div>
-	<div id="collapseDetails" class="panel-collapse collapse in">
-	  <div id="detailsPanel" class="panel-body" style="padding-top:0;">
-	  <div class="progress" style="height:2px; padding:0; margin-bottom:0; margin-top:0;">
-		<div id="detailsProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
-		  <!-- <span class="sr-only">70% Complete</span> -->
-		</div>
-	  </div>
-	  <div id="id00C"></div>
-		<div id="id00B"></div>
-	  </div>
-	</div>
-  </div>
-  <div class="panel panel-default">
-	<!-- remove the data-parent="#accordionMap" attribute so the accordion stops -->
-    <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseRoute">Pick Route</div>
-	<div id="collapseRoute" class="panel-collapse collapse">
-	  <div id="routePanel" class="panel-body">
-		<div>
-			<span id="selectRouteButton" class="active btn btn-default" onclick="selectRoute()">Route</span>
-			<span id="selectedRoute"></span>
-			<span id="selectDirectionButton"    class="btn btn-default" onclick="selectRouteDirectionsUsingMyRoute()">Direction</span>
-			<span id="selectedDirection"></span>
-			<span id="selectStopButton"         class="btn btn-default" onclick="selectRouteDirectionStopsUsingMyDirection()">Stop</span>
-			<span id="selectedStop"></span>
-		</div>
-		<hr style="margin-top: 2px; margin-bottom: 2px;" >
-        <div id="id00RouteDirectionStop"></div>
-	  </div>
-	</div>
-  </div>
-
-  <div class="panel panel-default">
-    <div class="panel-heading btn-block" data-toggle="collapse" data-parent="#accordionMap" href="#collapseBusStop">Bus Stop
-	</div>
-	<div id="collapseBusStop" class="panel-collapse collapse">
-		<div class="panel-body">
-			<form id="busStopForm" class="form-inline" action="">
-				<div class="form-group">
-					<label class="sr-only" for="stopNumber">Stop Number:</label>
-					<input class="form-control input-sm" id="stopNumber" type="number" min="34" max="70101" name="stopNumber" placeholder="Stop #" required />
+<div id="accordionMap" role="tablist" >
+	<div class="card">
+		<div class="card-header" role="tab">
+				<div data-toggle="collapse" data-target="#collapseChoices">
+					Previous Choices
 				</div>
-				<div class="form-group">
-					<label class="sr-only" for="stopDescription">Description:</label>
-					<input class="form-control input-sm" id="stopDescription" type="text" name="stopDescription" placeholder="Enter Description"/>
+		</div>
+		<div id="collapseChoices" class="collapse">
+			<span id="recentChoice0" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice1" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice2" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice3" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice4" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice5" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice6" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice7" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice8" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+			<span id="recentChoice9" class="active hidden btn-group col-md-3 col-sm-4 col-xs-6" >&nbsp;</span>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-header" data-toggle="collapse" data-target="#collapseDetails">Details</div>
+		<div id="collapseDetails" class="collapse">
+			<div id="detailsPanel" class="card-body" style="padding-top:0;">
+				<div class="progress" style="height:2px; padding:0; margin-bottom:0; margin-top:0;">
+					<div id="detailsProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
+						<!-- <span class="sr-only">70% Complete</span> -->
+					</div>
 				</div>
-				<button type="submit">Submit</button>
-			</form>
+				<div id="id00C"></div>
+				<div id="id00B"></div>
+			</div>
 		</div>
-		</form>
-		<script>
-		"use strict";
-		var form = document.getElementById("busStopForm");
-		form.addEventListener("submit", function(event) {
-			event.preventDefault();
-			if(db1.getByKey("o70101") == null) {
-				loadNumberedBusStopData();
-			}
-			if(db1.getByKey("o" + form.elements.stopNumber.value) == null) {
-				// show a validation error
-				alert("stop number not found.");
-				return;
-			}
-			
-			if(isDebugging) {
-				console.log("Saving stopNumber.value" + form.elements.stopNumber.value);
-			}
-
-			var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '"}';
-			db1.setByKey("BusStopNumberEntered", newValue);
-			showStop2(newValue);
-		  });
-		</script>
 	</div>
-  </div>
-
-  <div class="panel panel-default">
-	<!-- remove the data-parent="#accordionMap" attribute to see if accordion stops -->
-    <div class="panel-heading btn-block" data-toggle="collapse" href="#collapseMap">Map</div>
-	<div id="collapseMap" class="panel-collapse collapse">
-	  <div id="map_button" class="panel-body-sm map-title"></div>
-	  <div class="progress" style="height:2px; padding:0; margin-bottom:0;">
-		<div id="mapProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
-		  <!-- <span class="sr-only">70% Complete</span> -->
+	<div class="card">
+		<div class="card-header" data-toggle="collapse" data-target="#collapseRoute">Pick Route</div>
+		
+		<div id="collapseRoute" class="collapse">
+			<div id="routePanel" class="card-body">
+				<span id="selectRouteButton" class="active btn btn-secondary" onclick="selectRoute()">Route</span>
+				<span id="selectedRoute"></span>
+				<span id="selectDirectionButton"    class="btn btn-secondary" onclick="selectRouteDirectionsUsingMyRoute()">Direction</span>
+				<span id="selectedDirection"></span>
+				<span id="selectStopButton"         class="btn btn-secondary" onclick="selectRouteDirectionStopsUsingMyDirection()">Stop</span>
+				<span id="selectedStop"></span>
+			</div>
+			<div id="id00RouteDirectionStop"></div>
 		</div>
-	  </div>
-	  <div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
+		
+		
+		
 	</div>
-  </div>
+	<div class="card">
+		<div class="card-header" data-toggle="collapse" data-target="#collapseBusStop">Bus Stop</div>
+		<div id="collapseBusStop" class="collapse">
+			<div class="card-body">
+				<form id="busStopForm" class="form-inline" action="">
+					<div class="form-group">
+						<label class="sr-only" for="stopNumber">Stop Number:</label>
+						<input class="form-control input-sm" id="stopNumber" type="number" min="34" max="70101" name="stopNumber" placeholder="Stop #" required />
+					</div>
+					<div class="form-group">
+						<label class="sr-only" for="stopDescription">Description:</label>
+						<input class="form-control input-sm" id="stopDescription" type="text" name="stopDescription" placeholder="Enter Description"/>
+					</div>
+					<button type="submit">Submit</button>
+				</form>
+			</div>
+		</div>
+	</div>
 
-  <div class="panel panel-danger panel-footer" style="background-color: grey;">
-  </div>
-  
+	<div class="card">
+		<div class="card-header" data-toggle="collapse" data-target="#collapseMap">Map</div>
+		<div id="collapseMap" class="collapse">
+			<div id="map_button" class="panel-body-sm map-title"></div>
+			<div class="progress" style="height:2px; padding:0; margin-bottom:0;">
+				<div id="mapProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
+					<!-- <span class="sr-only">70% Complete</span> -->
+				</div>
+			</div>
+			<div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
+		</div>
+		
+	</div>
+	
 </div>
 
-<script type="text/javascript" src="bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+<script src="bootstrap-4.0.0-dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
 
-<script type="text/javascript">
+<script>
 "use strict";
+
+var form = document.getElementById("busStopForm");
+form.addEventListener("submit", function(event) {
+	event.preventDefault();
+	if(db1.getByKey("o70101") == null) {
+		loadNumberedBusStopData();
+	}
+	if(db1.getByKey("o" + form.elements.stopNumber.value) == null) {
+		// show a validation error
+		alert("stop number not found.");
+		return;
+	}
+	
+	if(isDebugging) {
+		console.log("Saving stopNumber.value" + form.elements.stopNumber.value);
+	}
+
+	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '"}';
+	db1.setByKey("BusStopNumberEntered", newValue);
+	showStop2(newValue);
+  });
 
 if(db1.getByKey("o70101") == null && db1.supports_html5_storage){
 	var sNew = document.createElement('script');
@@ -1992,5 +2008,7 @@ if(Modernizr.localstorage) {
 }
 
 </script>
+
+
 </body>
 </html> 
