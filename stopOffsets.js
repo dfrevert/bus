@@ -2,7 +2,7 @@
 
 function setDbValue(name, setting) {
 	try {
-		localStorage["BusSchedule." + name] = setting;
+		localStorage["BusDB." + name] = setting;
 	} catch (ex) {
 		console.log("setDbValue failed." + ex.message);
 	}
