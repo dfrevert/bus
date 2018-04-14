@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180413_1754';
+var version = '20180414_1852';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -298,9 +298,7 @@ function buildStopResults(arr) {
 
 	var i;
 
-	var out = "<div><table class=\"table table-sm table-responsive-sm table-bordered\"><tr><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
-
-//	var out = "<div class=\"table-responsive\"><table class=\"table table-bordered\"><tr class=\"table-row table-header\"><th>Route</th><th>Departure</th><th>Banner</th><th>Direction</th><th>Miles</th></tr>";
+	var out = "<div><table class=\"table table-sm table-responsive-sm table-bordered\"><tr><th>Route</th><th>Departs</th><th>Banner</th><th>Heading</th><th>Miles</th></tr>";
 
 	var targetPoint = getActiveNumberedBusStop();
 	
@@ -321,7 +319,7 @@ function buildStopResults(arr) {
 		"</td><td>" +
 		arr[i].Description +
 		"</td><td>" +
-		arr[i].RouteDirection +
+		stripBound(arr[i].RouteDirection) +
 		"</td><td>" +
 		(milesAndDirectionLetter === "" ? "&nbsp;" : milesAndDirectionLetter) +
 		"</td></tr>";
@@ -330,7 +328,7 @@ function buildStopResults(arr) {
 	document.getElementById("id00B").innerHTML = out;
 	document.getElementById("id00B").style.display = "block";
 	
-	if(targetPoint !== undefined) {
+	if(targetPoint !== undefined && targetPoint !== null) {
 		document.getElementById("title1").innerHTML = "Bus Schedule " + targetPoint.stopNumber;
 		
 		_numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
@@ -345,6 +343,17 @@ function buildStopResults(arr) {
 		
 		document.getElementById("id00C").innerHTML = outButton;	
 	}
+}
+
+function stripBound(routeDirection) {
+	if(routeDirection === undefined || routeDirection === null) {
+		return "";
+	}
+	if(routeDirection === "NORTHBOUND") {return "North";}
+	if(routeDirection === "SOUTHBOUND") {return "South";}
+	if(routeDirection === "EASTBOUND") {return "East";}
+	if(routeDirection === "WESTBOUND") {return "West";}
+	return routeDirection;
 }
 
 var _numberedStopValue;
@@ -523,7 +532,6 @@ function populateRoutes(responseText) {
 	var out = '<div id="routeButtonGroup" >';
 	var j = 0;
 	for(i = 0; i < arr.length; i++) {
-		// out += '<button type="button" class="btn btn-primary col-md-1" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
 		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
 	}
     out += "</div>";
@@ -661,7 +669,6 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 function populateRouteDirections(route, responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	// var out = '<div id="routeDirectionButtonGroup" class="btn-group" >';
 	var out = '<div id="routeDirectionButtonGroup">';
     for(i = 0; i < arr.length; i++) {
 		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeDirectionClicked(' + route + ', ' + arr[i].Value + ')" >' + arr[i].Text + '</button>';
@@ -728,11 +735,8 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 function populateRouteDirectionStops(route, direction, responseText) {
 	var arr = JSON.parse(responseText);
     var i;
-	// var out = '<div id="routeDirectionStopButtonGroup" class="btn-group" >';
 	var out = '<div id="routeDirectionStopButtonGroup">';
     for(i = 0; i < arr.length; i++) {
-		// out += '<button type="button" class="btn btn-primary col-md-6 col-sm-4" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;)" >' + arr[i].Text + '</button>';
-		// out += '<button type="button" class="btn btn-primary" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
 		out += '<button type="button" class="btn btn-primary" style="margin-right: 6px; margin-bottom: 6px;" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
 	}
     out += "</div>";
@@ -794,9 +798,7 @@ function populateDepartures(route, direction, stop, responseText) {
 
 	isCurrentTargetANumberedBusStop = false;
 	
-	// var out = "<table><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>";
-	// var out = '<div class="table-responsive"><table class="table table-bordered"><tr class="table-row table-header"><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
-	var out = '<div><table class="table table-sm table-responsive-sm table-bordered"><tr><th>Actual</th><th>Route</th><th>Departure</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
+	var out = '<div><table class="table table-sm table-responsive-sm table-bordered"><tr><th>Actual</th><th>Route</th><th>Departs</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
 	
 	// a tracked bus number, could disappear from these results, even though it has not reached the stop
 	//     need to detect that the tracked bus number is not in the results
@@ -832,7 +834,6 @@ function populateDepartures(route, direction, stop, responseText) {
 						}
 					}
 
-					// out += '<tr class="table-row">' + '<td id="Actual_' + route + '_' + pI.BlockNumber + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
 					out += '<tr><td id="Actual_' + route.toString() + '_' + pI.BlockNumber.toString() + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
 
 					pI.Route + pI.Terminal +
@@ -1702,7 +1703,7 @@ function resetRecentChoiceButtons() {
 		var recentIElement = document.getElementById("recentChoice" + i.toString());
 		var recentValue = tblRecentChoice.getByKey(i.toString());
 		// rather than prepopulate hidden controls, maybe it would be better to add them as needed.
-		if(recentValue === undefined || recentValue === null) {
+		if(recentValue === undefined || recentValue === null || recentValue === "undefined") {
 			recentIElement.hidden = true;
 			recentIElement.classList.add("hidden");
 			recentIElement.innerHTML = '&nbsp;';			
@@ -1756,7 +1757,7 @@ function rotateRecentChoices(recent) {
 	var emptyIndex = -1;
 	for(i=0; i < buttonMax; i++) {
 		var choiceRawI = tblRecentChoice.getByKey(i.toString());
-		if(choiceRawI === undefined || choiceRawI === null) {
+		if(choiceRawI === undefined || choiceRawI === null || choiceRawI === "undefined") {
 			if(emptyIndex === -1) {
 				emptyIndex = i;
 			}
@@ -1764,7 +1765,7 @@ function rotateRecentChoices(recent) {
 			var choiceI = JSON.parse(choiceRawI);
 			// if isScheduledStop, then need to match choiceI.stop == recent.stop
 			// else                                   choiceI.stopNumber == recent.stopNumber                     
-			if(choiceI !== undefined && choiceI !== null) {
+			if(choiceI !== undefined && choiceI !== null && choiceI !== "undefined") {
 				if(isScheduledStop && recent.stop === choiceI.stop) {
 					matchedChoice = choiceI;
 					matchIndex = i;
@@ -1778,7 +1779,7 @@ function rotateRecentChoices(recent) {
 			}
 		}
 	}
-	if(matchedChoice !== undefined && matchedChoice !== null) {
+	if(matchedChoice !== undefined && matchedChoice !== null && matchedChoice !== "undefined") {
 		if(isDebugging) {
 			console.log('Found an existing stop/stopNumber in rotateRecentChoices(' + recent + ')' );
 		}
