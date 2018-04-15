@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180414_1852';
+var version = '20180415_1145';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -189,14 +189,23 @@ function logAjax(xmlHttp, description) {
 	}
 	if(description.substring(0,16) === "showBusLocation2") {
 		var progress = document.getElementById("mapProgress");
-		progress.style.width = xmlHttp.readyState * 25 + "%";
-		progress.className = "progress-bar " + (xmlHttp.readyState === 4) ? "progress-bar-success" : "progress-bar-danger";
+		logAjaxProgressBackground(xmlHttp.readyState, progress);
 	}
 	if(description.substring(0,8) === "showStop" || description.substring(0,8) === "getDepar") {
 		progress = document.getElementById("detailsProgress");
-		progress.style.width = xmlHttp.readyState * 25 + "%";
-		progress.className = "progress-bar " + (xmlHttp.readyState === 4) ? "progress-bar-success" : "progress-bar-danger";
+		logAjaxProgressBackground(xmlHttp.readyState, progress);
 	}
+}
+
+function logAjaxProgressBackground(readyState, progressElement) {
+	progressElement.style.width = readyState * 25 + "%";
+	if(readyState === 4) {
+		progressElement.classList.remove("bg-danger");
+		progressElement.classList.add("bg-success");
+	} else {
+		progressElement.classList.remove("bg-success");
+		progressElement.classList.add("bg-danger");			
+	}	
 }
 
 function showStop2(enteredStopNumber) {
@@ -1376,6 +1385,35 @@ function showDbSize() {
 		console.log("localStorage size=" + getDbSize());	
 	}
 	alert("localStorage size is " + dbSize);
+}
+
+function removeDbUndefined() {
+	if (!db1.supports_html5_storage) { return null; }
+	var i = 0;
+	var removedCount = 0;
+	var result = null;
+	var value = null;
+	do {
+		result = localStorage.key(i);
+		if(result !== undefined && result !== null) {
+			value = localStorage[result];
+			if(value !== undefined && value !== null && value === "undefined") {
+				localStorage.removeItem(result);
+				removedCount++;
+			} else {
+				i++;
+			}
+		} else {
+			i++;
+		}
+	} 
+	while (result !== undefined && result !== null);
+	
+	if(isDebugging) {
+		console.log("From localStorage, deleted " + removedCount.toString() + " of " + i.toString() + " (key, undefined) pairs.");
+	}
+	alert("Removed " + removedCount.toString() + " undefined values from localStorage.");	
+	return true;
 }
 // -------------------------------- local storage -- end
 
