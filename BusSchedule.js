@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180415_1145';
+var version = '20180425_2019';
 
 var isDebugging = false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
