@@ -904,8 +904,9 @@ function populateDepartures(route, direction, stop, responseText) {
 		"</td><td>";
 		
 		out +=
-		milesAndDirectionLetter !== "" ? milesAndDirectionLetter : arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "&nbsp;" : distanceInMiles3Digits(arr[i]) +
-		"</td></tr>";
+		milesAndDirectionLetter !== "" ? milesAndDirectionLetter : arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "&nbsp;" : distanceInMiles3Digits(arr[i]);
+
+		out += "</td></tr>";
 		
 //		if(isDebugging) {
 //			console.log("line 900 out=" + out);
@@ -1553,7 +1554,7 @@ function addResetButtonToMapTitle() {
 		var divInTitle = document.getElementsByClassName("map-title");
 		if(divInTitle !== undefined) {
 			divInTitle[0].innerHTML = divInTitle[0].innerHTML + 
-				'<button type="button" class="btn btn-primary btn-sm" style="margin-right: 10%;" onclick="clearTracking()">Reset Map</button>';
+				'<button type="button" class="btn btn-primary btn-sm float-right" onclick="clearTracking()">Reset Map</button>';
 		}
 	}
 }
@@ -1844,3 +1845,75 @@ function toggleDebug() {
 	isDebugging = !isDebugging;
 	document.getElementById("utilDebugging").innerText = "Toggle debug " + (isDebugging ? "off" : "on");
 }
+
+var form = document.getElementById("busStopForm");
+form.addEventListener("submit", function(event) {
+	event.preventDefault();
+	var numberedBusStopo70101 = db1.getByKey("o70101");
+	if(numberedBusStopo70101 === undefined || numberedBusStopo70101 === null) {
+		loadNumberedBusStopData();
+	}
+	
+	var numberedBusStop = db1.getByKey("o" + form.elements.stopNumber.value);
+	if(numberedBusStop === undefined || numberedBusStop === null) {
+		// show a validation error
+		alert("stop number not found.");
+		return;
+	}
+	
+	if(isDebugging) {
+		console.log("Saving stopNumber.value" + form.elements.stopNumber.value);
+	}
+
+	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '"}';
+	db1.setByKey("BusStopNumberEntered", newValue);
+	showStop2(newValue);
+  });
+
+ if(db1.getByKey("o70101") == null && db1.supports_html5_storage){
+	var sNew = document.createElement('script');
+	sNew.async = false; // true;
+	sNew.src = "stopOffsets.js";
+	var s0 = document.getElementsByTagName('script')[0];
+	s0.parentNode.insertBefore(sNew, s0);
+}
+if(tblStop.getByKey('WIHA') == null && db1.supports_html5_storage) {
+	var sNew = document.createElement('script');
+	sNew.async = false; // true;
+	sNew.src = "stopLocations.js";
+	var s0 = document.getElementsByTagName('script')[0];
+	s0.parentNode.insertBefore(sNew, s0);
+}
+
+// global variables for location
+var Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
+
+var SouthAndWestOfGatewayRamp  = {latitude:44.9779802, longitude:-93.2642134};   //133  waypoint before Marquette and 4th
+var Washington300S     = {latitude:44.979682,  longitude:-93.264170};            // 133 bus is on the move
+var SWofWashington300S = {latitude:44.979299,  longitude:-93.263962};
+var GrantAnd35W        = {latitude:44.969878,  longitude:-93.269835};            //133  returning, still on 35W
+
+var FourthStreet215S = {latitude:44.978416,  longitude:-93.266661};   // #7
+var SixthStreet201S  = {latitude:44.9763315, longitude:-93.268188};   // #14
+var Washington300N   = {latitude:44.984393,  longtiude:-93.272505};   // #14
+var Washington500N   = {latitude:44.978711,  longitude:-93.262360};   // #14
+
+var BroadwayEmerson  = {latitude:44.999164,  longitude:-93.294136};   // #14
+var PlymouthWashington = {latitude:44.992010,longitude:-93.281476};   // #14
+var FifthStBusRamp   = {latitude:44.980832,  longitude:-93.275425};   // #14
+var SixthNicollet    = {latitude:44.977802,  longitude:-93.271305};
+
+var myRoute = -1; // 14;
+var myDirection = -1; // 1;
+var myStop = '';
+
+var myBlockNumber = 0;
+var myBlockNumberTimeout = new Date(2018,1,1);
+
+var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus stop
+
+if(Modernizr.localstorage) {
+	resetRecentChoiceButtons();
+}
+
+
