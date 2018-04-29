@@ -43,10 +43,30 @@ div#id00C button.btn.btn-primary,
 .card {
 	margin-bottom: 0;
 }
+
+/* based on www.w3schools.com/howto/howto_css_loader.asp */
+.loader {
+  border: 8px solid #00f3f3;
+  border-radius: 50%;
+  border-top: 8px solid #00c0c0;
+  width: 24px;
+  height: 24px;
+  -webkit-animation: spin 1s linear 60; /* Safari */
+  /* animation: spin 2s linear infinite;   */
+  animation: spin 1s linear 60;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 </style>
 
 </head>
 <body>
+<center id="page-loader" style="margin: 100px;"><div class="loader"></div> loading . . . </center>
+<div id="page-loaded" style="display:none;">
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
 	<span class="navbar-brand" id="title1">Bus Schedule</span>
 	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse">
@@ -167,6 +187,7 @@ div#id00C button.btn.btn-primary,
 		<small>version 20180428</small>
 	</div>
 </footer>
+</div> <!-- page-loaded ends here -->
 <script src='modernizr/modernizr.js'></script>
 <script src='jquery/jquery-3.3.1.min.js'></script>
 <script src='BusSchedule.js'></script>

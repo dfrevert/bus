@@ -2,10 +2,20 @@
 
 "use strict";
 
-var version = '20180425_2019';
+var version = '20180429_1322';
 
-var isDebugging = false; // true;
+var isDebugging = true; // false; // true;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
+
+/*
+Can the initial load experience be improved?
+a) Loading ...
+b) if Previous Choice buttons exist, open that section
+c) if not, open both Pick Route and Bus Stop sections
+ 
+
+*/
+
 
 if(isDebugging) {
 	if (Modernizr.localstorage) {
@@ -223,6 +233,10 @@ function showStop2(enteredStopNumber) {
 	}
 	saveNumberedBusStopInfo(stopNumberInfo);
 	showStop(stopNumberInfo.stopNumber);
+	
+	document.getElementById("collapseDetails").classList.remove("collapse");
+	document.getElementById("collapseRoute").classList.add("collapse");
+
 }
 
 function showStop(stopNumber) {
@@ -562,6 +576,7 @@ function busNumberClicked2(blockNumber, routeNumber) {
 		var targetStop = getActiveNumberedBusStop();
 		if(targetStop !== undefined && targetStop !== null) {
 			myBlockNumber = blockNumber;
+			document.getElementById("collapseMap").classList.remove("collapse");			
 			initializeMap2(targetStop);
 		}
 	}
@@ -578,6 +593,7 @@ function busNumberClicked(blockNumber) {
 			stop = tblStop.getByKey(myStop);
 			if(stop !== undefined && stop !== null) {
 				stopMine = JSON.parse(stop);
+				document.getElementById("collapseMap").classList.remove("collapse");			
 				initializeMap2(stopMine);
 				if(isDebugging) {
 					console.log("busNumberClicked line 614, stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
@@ -769,6 +785,10 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 			+ "  myDirection=" + myDirection
 			+ "  myStop=" + myStop);
 	}
+	// open the details section
+	document.getElementById("collapseDetails").classList.remove("collapse");
+	document.getElementById("collapseBusStop").classList.add("collapse");
+	
 	getDepartures(route, direction, stop);
 }
 
@@ -969,6 +989,8 @@ function populateDepartures(route, direction, stop, responseText) {
 	if(hasActuals) {
 		showBusLocation2(route, actualBlockNumber);
 	}
+	
+	document.getElementById("collapseDetails").classList.remove("collapse");				
 }
 
 function getStopDescription(route, direction, stop) {
@@ -1914,6 +1936,21 @@ var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus st
 
 if(Modernizr.localstorage) {
 	resetRecentChoiceButtons();
+	
+	// if any button is loaded, open the "collapseChoices" section
+	var firstChoice = document.getElementById("recentChoice0");
+	if(firstChoice !== undefined && firstChoice !== null && firstChoice.classList.contains("hidden") === false) {
+		document.getElementById("collapseChoices").classList.remove("collapse");
+	} else {
+		document.getElementById("collapseRoute").classList.remove("collapse");
+		document.getElementById("collapseBusStop").classList.remove("collapse");
+	}
 }
+
+var loadingElement = document.getElementById("page-loader");
+loadingElement.hidden = true;
+loadingElement.classList.add("hidden");
+
+document.getElementById("page-loaded").style.display = "block";
 
 
