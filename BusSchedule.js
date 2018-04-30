@@ -2,17 +2,16 @@
 
 "use strict";
 
-var version = '20180429_1322';
+var version = '20180429_2144';
 
-var isDebugging = true; // false; // true;
+var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
-Can the initial load experience be improved?
-a) Loading ...
-b) if Previous Choice buttons exist, open that section
-c) if not, open both Pick Route and Bus Stop sections
- 
+Can the probable "Previous Choice" be guessed and pre-clicked?
+Break the day into 6 hour blocks
+Save the "first" chosen "Previous Choice" on each load of the page.
+When last 3 choices match, start pre-selecting that choice. 
 
 */
 
