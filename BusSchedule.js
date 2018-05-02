@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180429_2144';
+var version = '20180501_1948';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -1676,6 +1676,10 @@ function addMarker(busLocation) {
 // ----- create map and add markers ------ end
 
 function clearTracking() {
+//	return new Promise(function(resolve, reject) {
+//		
+//	}
+	
 	tblVehicleLocation.deleteAll();
 	tblVehicleTracked.deleteAll();
 	document.getElementById("map_canvas").innerHTML = "";
@@ -1870,10 +1874,10 @@ function toggleDebug() {
 var form = document.getElementById("busStopForm");
 form.addEventListener("submit", function(event) {
 	event.preventDefault();
-	var numberedBusStopo70101 = db1.getByKey("o70101");
-	if(numberedBusStopo70101 === undefined || numberedBusStopo70101 === null) {
-		loadNumberedBusStopData();
-	}
+//	var numberedBusStopo70101 = db1.getByKey("o70101");
+//	if(numberedBusStopo70101 === undefined || numberedBusStopo70101 === null) {
+//		loadNumberedBusStopData();
+//	}
 	
 	var numberedBusStop = db1.getByKey("o" + form.elements.stopNumber.value);
 	if(numberedBusStop === undefined || numberedBusStop === null) {
@@ -1891,14 +1895,15 @@ form.addEventListener("submit", function(event) {
 	showStop2(newValue);
   });
 
- if(db1.getByKey("o70101") == null && db1.supports_html5_storage){
+if(db1.getByKey("o70101") === undefined && db1.supports_html5_storage){
 	var sNew = document.createElement('script');
 	sNew.async = false; // true;
 	sNew.src = "stopOffsets.js";
 	var s0 = document.getElementsByTagName('script')[0];
 	s0.parentNode.insertBefore(sNew, s0);
 }
-if(tblStop.getByKey('WIHA') == null && db1.supports_html5_storage) {
+
+if(tblStop.getByKey('WIHA') === undefined && db1.supports_html5_storage) {
 	var sNew = document.createElement('script');
 	sNew.async = false; // true;
 	sNew.src = "stopLocations.js";
