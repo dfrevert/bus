@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180517_2005';
+var version = '20180520_1858';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -185,7 +185,7 @@ function getRouteDirectionStopActive() {
 	var raw = db1.getByKey("RouteDirectionStopActive");
 	if(raw === undefined || raw === null) {
 		if(isDebugging) {
-			console.warn("getRouteDirectionStopActive() will return null because db1.getByKey('RouteDirectionStopActive') returned " + raw === undefined ? "undefined": "null");
+			console.warn("getRouteDirectionStopActive() will return null because db1.getByKey('RouteDirectionStopActive') returned " + ((raw === undefined) ? "undefined": "null"));
 		}
 		return null;
 	}
@@ -580,8 +580,9 @@ function busNumberClicked2(blockNumber, routeNumber) {
 		var targetStop = getActiveNumberedBusStop();
 		if(targetStop !== undefined && targetStop !== null) {
 			myBlockNumber = blockNumber;
-			document.getElementById("collapseMap").classList.remove("collapse");			
-			initializeMap2(targetStop);
+			myStop = null;
+//			document.getElementById("collapseMap").classList.remove("collapse");			
+//			initializeMap2(targetStop);
 		}
 	}
 
@@ -601,6 +602,24 @@ function busNumberClicked(blockNumber) {
 				initializeMap2(stopMine);
 				if(isDebugging) {
 					console.log("busNumberClicked(" +blockNumber.toString() + ") myStop found: stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+				}
+			} else {
+				if(isDebugging) {
+					console.log("busNumberClicked(" +blockNumber.toString() + ") map did not exist, myStop not set, a NumberedStop?");
+				}
+
+				var targetStop = getActiveNumberedBusStop();
+				if(targetStop !== undefined && targetStop !== null) {
+					// myBlockNumber = blockNumber;
+					if(isDebugging) {
+						console.log("busNumberClicked(" +blockNumber.toString() + ") map did not exist, a NumberedStop found.");
+					}
+					document.getElementById("collapseMap").classList.remove("collapse");			
+					initializeMap2(targetStop);
+				} else {
+					if(isDebugging) {
+						console.warn("busNumberClicked(" +blockNumber.toString() + ") map did not exist, myStop and NumberedStop not set");
+					}
 				}
 			}
 		}
@@ -1604,7 +1623,6 @@ function addMarker(busLocation) {
 	
 	if(markers === undefined || markers === null) {
 		markers = [];
-		markerIntervals = [];
 	}
 	
     for (i = 0; i < markers.length; i++)
@@ -1679,6 +1697,9 @@ function addMarker(busLocation) {
 			marker.setMap(null);
 		}, 20 * 60 * 1000);     // 20 minutes
 		
+		if(markerIntervals === undefined || markerIntervals === null) {
+			markerIntervals = [];
+		}
 		markerIntervals.push(markerInterval);
 	} 
 	markers.push(marker);
@@ -1736,7 +1757,9 @@ function clearTracking() {
 		markers.length = 0;
 		markers = null;
 	}
-	map = null;
+	if(isDebugging) {
+		console.debug("clearTracking() of markers finished.");
+	}
 
 	if(markerIntervals !== undefined && markerIntervals !== null) {
 		for (var i = 0; i < markerIntervals.length; i++) {
@@ -1748,7 +1771,11 @@ function clearTracking() {
 		markerIntervals.length = 0;
 		markerIntervals = null;
 	}
+	if(isDebugging) {
+		console.debug("clearTracking() of markerIntervals finished.");
+	}
 	
+	map = null;
 	if(isDebugging) {
 		console.debug("clearTracking() finished.");
 	}
@@ -1935,6 +1962,7 @@ function toggleDebug() {
 var form = document.getElementById("busStopForm");
 form.addEventListener("submit", function(event) {
 	event.preventDefault();
+
 //	var numberedBusStopo70101 = db1.getByKey("o70101");
 //	if(numberedBusStopo70101 === undefined || numberedBusStopo70101 === null) {
 //		loadNumberedBusStopData();
@@ -1954,14 +1982,15 @@ form.addEventListener("submit", function(event) {
 	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '"}';
 	db1.setByKey("BusStopNumberEntered", newValue);
 	showStop2(newValue);
-  });
+});
+//  did not remove the "Violation" verbose message  }, Modernizr.passiveeventlisteners ? {passive: true} : false);
 
 if(db1.getByKey("o70101") === undefined && db1.supports_html5_storage){
 	var sNew = document.createElement('script');
 	sNew.async = false; // true;
 	sNew.src = "stopOffsets.js";
 	var s0 = document.getElementsByTagName('script')[0];
-	s0.parentNode.insertBefore(sNew, s0);
+	s0.parentNode.insertBefore(sNew, s0);	
 }
 
 if(tblStop.getByKey('WIHA') === undefined && db1.supports_html5_storage) {
