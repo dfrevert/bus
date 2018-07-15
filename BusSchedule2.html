@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+	<link rel="icon" type="image/png" href="bus_transit.ico">
+	<title>Bus Schedule 2</title>
+
+	<style>
+		table {
+			font-family: arial, sans-serif;
+			border-collapse: collapse;
+			width: 100%;
+		}
+
+		td, th {
+			border: 1px solid #dddddd;
+			text-align: left;
+			padding: 8px;
+		}
+
+		tr:nth-child(even) {
+			background-color: #dddddd;
+		}
+		
+		.button {
+			background-color: #33CC44; /* #4CAF50; Green */
+			border: none;
+			color: white;
+			padding: 10px 20px;
+			text-align: center;
+			text-decoration: none;
+			display: inline-block;
+			font-size: 16px;
+		    margin: 1px 4px;
+			cursor: pointer;
+		}
+		.button-small {
+			padding: 5px 10px;
+		    margin: 1px 4px;
+		}
+	</style>
+</head>
+<body>
+
+<div id="previousChoices">
+<form id="previousChoicesForm" name="previousChoicesForm">
+</form>
+</div>
+<table id="tableLocations">
+</table>
+<hr>
+<div id="map_canvas" class="panel-body" style="width: 100%; height: 700px">
+</div>
+<footer style="text-align: center;" >
+<small id="version"></small>
+</footer>
+<script src='BusSchedule2.js'></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap2" async defer></script>
+</body>
+</html> 
