@@ -1,6 +1,6 @@
 /* BusSchedule2.html javascript */
 "use strict";
-var version = '20180714_1601';
+var version = '20180716_2201';
 
 var isDebugging = false;
 
@@ -12,6 +12,28 @@ var isDebugging = false;
 //                        b) after 30 seconds, requery and display that info  
 //                        b.2) if a different bus number, clear the markers on the map, and requery
 //
+
+var isFilterByDirection = false;
+function filterByDirection(element) {
+	isFilterByDirection = !isFilterByDirection;
+	if(isFilterByDirection) {
+		element.classList.add("button-text-bold");
+	}
+	else {
+		element.classList.remove("button-text-bold");
+	}
+}
+
+var isFilterByTerminal = false;
+function filterByTerminal(element) {
+	isFilterByTerminal = !isFilterByTerminal;
+	if(isFilterByTerminal) {
+		element.classList.add("button-text-bold");
+	}
+	else {
+		element.classList.remove("button-text-bold");
+	}
+}
 
 // for the purposes of 
 // showBusLocation2 uses route in the call to the NexTrip api, uses route later to filter the results
@@ -54,8 +76,8 @@ function populateVehicleLocations3(buttonParams, responseText) {
 							 
 	for(i = 0; i < arr.length; i++) {
 		if(arr[i].Route === buttonParams.route.toString() 
-			&& (headingAsDirection === '?' || arr[i].Direction === headingAsDirection)
-			&& (re === null || re.test(arr[i].Terminal))
+			&& (!isFilterByDirection || (headingAsDirection === '?' || arr[i].Direction === headingAsDirection))
+			&& (!isFilterByTerminal || (re === null || re.test(arr[i].Terminal)))
 			) { // & arr[i].BlockNumber === blockNumber) {
 			var newVal = {"direction": arr[i].Direction,    // 1 = South, 2 = East, 3 = West, 4 = North.
 						"locationTime": arr[i].LocationTime,
@@ -88,7 +110,7 @@ function populateVehicleLocations3(buttonParams, responseText) {
 					'<button type="button" class="button button-small" onclick="blockNumberClicked(' 
 						+ targetPoint.latitude + ', ' + targetPoint.longitude + ', '
 						+ busAtPoint.latitude + ', ' + busAtPoint.longitude + ', '
-						+ '`' + busAtPoint.locationTime + '`' + ')" >' + newVal.blockNumber + '</button>' +
+						+ '`' + busAtPoint.locationTime + '`, ' + newVal.blockNumber + ')" >' + newVal.blockNumber + '</button>' +
 					"</td></tr>";
 		}
 		// Object { Bearing: 0, BlockNumber: 1203, Direction: 4, LocationTime: "/Date(1447298877000-0600)/", 
@@ -160,8 +182,12 @@ function addBusButton(objButton) {
   };
 
   var foo = document.getElementById("previousChoicesForm");
+  var firstFilterNode = document.getElementById("firstFilterNode")
   //Append the element in page (in span).  
-  foo.appendChild(element);
+  //  foo.appendChild(element);
+  
+  // relies on the id="firstFilterNode" of a filter button
+  foo.insertBefore(element, firstFilterNode);
 }
 //document.getElementById("btnAdd").onclick = function() {
 //  add("text");
@@ -278,9 +304,9 @@ function distanceNearLatitude45(point, wayPoint) {
 }
 
 
-function blockNumberClicked(targetLat, targetLon, busLocationLat, busLocationLon, busLocationTime) {
+function blockNumberClicked(targetLat, targetLon, busLocationLat, busLocationLon, busLocationTime, blockNumber) {
 	var objTarget = {"latitude":parseFloat(targetLat), "longitude":parseFloat(targetLon)};
-	var objBusLocation = {"latitude":parseFloat(busLocationLat), "longitude":parseFloat(busLocationLon), "time":busLocationTime};
+	var objBusLocation = {"latitude":parseFloat(busLocationLat), "longitude":parseFloat(busLocationLon), "time":busLocationTime, "blockNumber":blockNumber};
 	
 	if(map === undefined || map === null) {
 		initializeMap2(objTarget);

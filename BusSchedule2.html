@@ -39,12 +39,23 @@
 			padding: 5px 10px;
 		    margin: 1px 4px;
 		}
+		.button-filter {
+			background-color: #55CC77;
+			padding: 5px 10px;
+		    margin: 1px 4px;
+		}
+		.button-text-bold {
+			font-weight: bold;
+		}
 	</style>
 </head>
 <body>
 
 <div id="previousChoices">
 <form id="previousChoicesForm" name="previousChoicesForm">
+
+<input type="button" class="button button-filter" value="by Direction" name="btnFilterByDirection" onclick="filterByDirection(this);" id="firstFilterNode">
+<input type="button" class="button button-filter" value="by Terminal" name="btnFilterByTerminal" onclick="filterByTerminal(this);">
 </form>
 </div>
 <table id="tableLocations">
