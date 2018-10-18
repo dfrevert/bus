@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20180520_1858';
+var version = '20181017_1238';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -255,7 +255,10 @@ function showStop(stopNumber) {
 
 function saveNumberedBusStopInfo(enteredStopNumber) {
 	var activeNumberedBusStop = getActiveNumberedBusStop();
-	if(activeNumberedBusStop !== undefined && activeNumberedBusStop !== null && activeNumberedBusStop.stopNumber === enteredStopNumber.stopNumber) {
+	if(activeNumberedBusStop !== undefined 
+		&& activeNumberedBusStop !== null 
+		&& activeNumberedBusStop.stopNumber === enteredStopNumber.stopNumber
+		&& activeNumberedBusStop.routeFilter === enteredStopNumber.routeFilter) {
 		return;
 	}
 	
@@ -297,7 +300,7 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 	// ActiveNumberedBusStop needs to include the description from the BusStopNumberEntered
 	var description = enteredStopNumber.description;
 	
-	var busStopPoint = {"stopNumber":enteredStopNumber.stopNumber, "latitude": latitude, "longitude": longitude, "description": description};
+	var busStopPoint = {"stopNumber":enteredStopNumber.stopNumber, "latitude": latitude, "longitude": longitude, "description": description, "routeFilter":enteredStopNumber.routeFilter};
 	db1.setByKey("ActiveNumberedBusStop", JSON.stringify(busStopPoint));
 	
 	// rotateRecentNumberedStops();
@@ -324,7 +327,19 @@ function buildStopResults(arr) {
 	var targetPoint = getActiveNumberedBusStop();
 	
 	for(i = 0; i < arr.length; i++) {
-	
+		
+		if(targetPoint !== undefined && arr[i] !== undefined && arr[i].Route !== undefined && targetPoint.routeFilter !== undefined) {
+			var iRouteAndTerminal = arr[i].Route + ((arr[i].Terminal === undefined) ? "" : arr[i].Terminal);
+			// var re = new RegExp("\\" + targetPoint.routeFilter + "\\", "g");
+			var re = new RegExp(targetPoint.routeFilter, "g");
+			if(!iRouteAndTerminal.match(re)) {
+				if(isDebugging) {
+					console.log("buildStopResults(arr) targetPoint.routeFilter=" + targetPoint.routeFilter + " did not match iRouteAndTerminal=" + iRouteAndTerminal);
+				}
+				continue;    // back to top of for loop 
+			}		
+		}	
+		
 		var milesAndDirectionLetter = "";
 		if(targetPoint !== undefined && arr[i] !== undefined && arr[i].VehicleLatitude !== undefined && arr[i].VehicleLatitude !== 0) {
 			var busAtPoint = {"latitude": arr[i].VehicleLatitude, "longitude": arr[i].VehicleLongitude};
@@ -355,10 +370,14 @@ function buildStopResults(arr) {
 		_numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
 		
 		if(isDebugging) {
-			console.log("buildStopResults(arr) _numberedStopValue=" + JSON.stringify(_numberedStopValue));
+			console.log("buildStopResults(arr) set _numberedStopValue=" + JSON.stringify(_numberedStopValue));
 		}
 		
-		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(_numberedStopValue.stopNumber);" >' + targetPoint.stopNumber + ' - ' + targetPoint.description + '</button>';
+		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(_numberedStopValue.stopNumber);" >' 
+		              + targetPoint.stopNumber + ' - ' 
+					  + targetPoint.description 
+					  + ((targetPoint.routeFilter === undefined) ? '' : (' ' + targetPoint.routeFilter))
+					  + '</button>';
 		var timeOfQuery = new Date();
 		outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
 		
@@ -410,9 +429,19 @@ function showBusLocation2(route, blockNumber) {
 
 function populateVehicleLocations2(route, blockNumber, responseText) {
 	var arr = JSON.parse(responseText);
+	
+	if(isDebugging) {
+		console.log("populateVehicleLocations2(" + route.toString() + ", " + blockNumber + ", " + responseText + ") called.");
+	}
+	
 	var i;
 	for(i = 0; i < arr.length; i++) {
 		if(arr[i].Route === route.toString() && arr[i].BlockNumber === blockNumber) {
+
+			if(isDebugging) {
+				console.log("populateVehicleLocations2  .Route, .BlockNumber match found. (" + route.toString() + ", " + blockNumber + ").");
+			}
+
 			var newVal = {"direction": arr[i].Direction, 
 						"locationTime": arr[i].LocationTime,
 						"latitude": arr[i].VehicleLatitude,
@@ -422,6 +451,13 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 
 			// assumes only one block number needs to be clickable
 			return;
+		}
+		else {
+
+			if(isDebugging) {
+				console.log("populateVehicleLocations2  .Route, .BlockNumber match NOT found. (" + arr[i].Route + ", " + arr[i].BlockNumber + ").");
+			}
+
 		}
 		// Object { Bearing: 0, BlockNumber: 1203, Direction: 4, LocationTime: "/Date(1447298877000-0600)/", 
 		//          Odometer: 0, Route: "14", Speed: 0, Terminal: "R", 
@@ -1867,7 +1903,10 @@ function resetRecentChoiceButtons() {
 			// var recentBusStopNumber = JSON.parse(recentValue);
 			var buttonText = 'unknown';
 			if(parsedRecentChoice.stopNumber !== undefined) {
-				buttonText = parsedRecentChoice.stopNumber + ' - ' + (parsedRecentChoice.description === undefined || parsedRecentChoice.description === null ? " " : parsedRecentChoice.description);
+				buttonText = parsedRecentChoice.stopNumber 
+				           + ' - ' 
+						   + (parsedRecentChoice.description === undefined || parsedRecentChoice.description === null ? " " : parsedRecentChoice.description)
+						   + (parsedRecentChoice.routeFilter === undefined || parsedRecentChoice.routeFilter === null ? "" : " " + parsedRecentChoice.routeFilter);
 			}
 			if(parsedRecentChoice.stop !== undefined) {
 				buttonText = parsedRecentChoice.route + ' - ' + directionAsString(parsedRecentChoice.direction) + ' - ' + parsedRecentChoice.stop;
@@ -1923,7 +1962,7 @@ function rotateRecentChoices(recent) {
 					matchIndex = i;
 					isAlreadyInTheList = true;
 				}
-				if(!isScheduledStop && recent.stopNumber === choiceI.stopNumber) {
+				if(!isScheduledStop && recent.stopNumber === choiceI.stopNumber && recent.routeFilter === choiceI.routeFilter) {
 					matchedChoice = choiceI;
 					matchIndex = i;
 					isAlreadyInTheList = true;
@@ -1963,11 +2002,6 @@ var form = document.getElementById("busStopForm");
 form.addEventListener("submit", function(event) {
 	event.preventDefault();
 
-//	var numberedBusStopo70101 = db1.getByKey("o70101");
-//	if(numberedBusStopo70101 === undefined || numberedBusStopo70101 === null) {
-//		loadNumberedBusStopData();
-//	}
-	
 	var numberedBusStop = db1.getByKey("o" + form.elements.stopNumber.value);
 	if(numberedBusStop === undefined || numberedBusStop === null) {
 		// show a validation error
@@ -1979,7 +2013,7 @@ form.addEventListener("submit", function(event) {
 		console.log("Saving stopNumber.value" + form.elements.stopNumber.value);
 	}
 
-	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '"}';
+	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '", "routeFilter":"' + form.elements.stopRouteFilter.value + '"}';
 	db1.setByKey("BusStopNumberEntered", newValue);
 	showStop2(newValue);
 });
