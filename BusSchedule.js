@@ -2027,7 +2027,7 @@ if(db1.getByKey("o302") === undefined && db1.supports_html5_storage){
 	s0.parentNode.insertBefore(sNew, s0);	
 }
 
-if(tblStop.getByKey('WIHA') === undefined && db1.supports_html5_storage) {
+if(tblStop.getByKey('101N') === undefined && db1.supports_html5_storage) {
 	var sNew = document.createElement('script');
 	sNew.async = false; // true;
 	sNew.src = "stopLocations.js";
