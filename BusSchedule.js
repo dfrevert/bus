@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20181017_1238';
+var version = '20190203_1001';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -2019,7 +2019,7 @@ form.addEventListener("submit", function(event) {
 });
 //  did not remove the "Violation" verbose message  }, Modernizr.passiveeventlisteners ? {passive: true} : false);
 
-if(db1.getByKey("o70101") === undefined && db1.supports_html5_storage){
+if(db1.getByKey("o302") === undefined && db1.supports_html5_storage){
 	var sNew = document.createElement('script');
 	sNew.async = false; // true;
 	sNew.src = "stopOffsets.js";
