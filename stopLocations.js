@@ -882,3 +882,4 @@ tblStop.setByKey("XE15",'{"latitude":44.9953,"longitude":-93.4513}');
 tblStop.setByKey("XE34",'{"latitude":45.0195,"longitude":-93.4514}');
 tblStop.setByKey("XEC6",'{"latitude":44.9966,"longitude":-93.4513}');
 tblStop.setByKey("XEGV",'{"latitude":44.9991,"longitude":-93.3184}');
+};
