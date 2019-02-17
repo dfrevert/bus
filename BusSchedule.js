@@ -1602,7 +1602,12 @@ function getGps() {
 var map;
 var markers = [];
 
-function initializeMap() { return initializeMap2(currentDeviceGps); }
+function initializeMap() {
+	if(isDebugging) {
+		console.log("initializeMap() called back.");
+	}	
+	return initializeMap2(currentDeviceGps); 
+}
 
 function initializeMap2(position) {
 	if (position === undefined || position === null || position.latitude === undefined || position.latitude === null) { return; }
@@ -1661,9 +1666,11 @@ function addMarker(busLocation) {
 		markers = [];
 	}
 	
-    for (i = 0; i < markers.length; i++)
+    for (i = 0; i < markers.length; i++) {
+		if(markers[i].position === undefined || markers[i].position === null) return;
 		if (busLocation.latitude === markers[i].position.lat() && busLocation.longitude === markers[i].position.lng()) return;
-
+	}
+	
 	var current = new google.maps.LatLng(busLocation.latitude, busLocation.longitude);
 	if(current === undefined || current === null) {
 		if(isDebugging) {
