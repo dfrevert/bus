@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20190203_1001';
+var version = '20190323_1959';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -15,6 +15,22 @@ When last 3 choices match, start pre-selecting that choice.
 
 */
 
+// This script is released to the public domain and may be used, modified and
+// distributed without restrictions. Attribution not necessary but appreciated.
+// Source: https://weeknumber.net/how-to/javascript
+
+// Returns the ISO week of the date.
+Date.prototype.getWeek = function() {
+  var date = new Date(this.getTime());
+  date.setHours(0, 0, 0, 0);
+  // Thursday in current week decides the year.
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  // January 4 is always in week 1.
+  var week1 = new Date(date.getFullYear(), 0, 4);
+  // Adjust to Thursday in week 1 and count number of weeks from date to week1.
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000
+                        - 3 + (week1.getDay() + 6) % 7) / 7);
+}
 
 if(isDebugging) {
 	if (Modernizr.localstorage) {
@@ -153,8 +169,118 @@ var tblRouteDirectionStops = new DbTable(db1, 'RouteDirectionStops');
 var tblStop = new DbTable(db1, 'Stop');
 var tblRecentChoice = new DbTable(db1, 'RecentChoice');
 
+
+// in order to pre-select a BusDB.RecentChoice.N button, need a table of 
+//     either   route+direction+stop + weekOfYear + dayOfWeek + hourOfDay     + Count
+//     or       numberedStop         + weekOfYear + dayOfWeek + hourOfDay     + Count
+// so later, based on weekOfYear + dayOfWeek + hourOfDay, the most likely can be selected
+//     Every time the button (recent choice button or the Details button) is clicked
+//           the proper entry is found or added
+//                            its count is incremented
+//
+var tblPastChoices = new DbTable(db1, 'PastChoices');
+// expected data structure
+//     someday include: weekOfYear     int  1=            53            // use getWeek() on a Date object
+//    
+//     dayOfWeek      int  0=Sunday, ... 6 = Saturday  // use getDay()  on a Date object
+//     hourOfDay      int  0, ... , 23                 // use getHour() on a Date object
+//     choices        array of choice    {{"scheduledStop":{"route":14,"direction":4,"stop":"BL54"},"count":1},
+//                                       {"numberedStop":{"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"},"count":2}}
+//
+//     key will need to duplicate the week + day + hour, and so should not duplicate the data?
+//          so, instead a comma separated string?   like "2,7" to represent  Tuesday 7am 
+
 // ---------------- localStorage as object -- end
 
+function getCurrentPastChoicesKey() {
+	var now = new Date();
+	// now.getWeek().toString()+','+
+	return now.getDay().toString()+','+now.getHours().toString();
+}
+
+function savePastChoice(recentChoice) {
+	// var now = new Date();
+	// now.getWeek().toString()+','+
+	// var pastChoicesKey = now.getDay().toString()+','+now.getHours().toString();
+	var pastChoicesKey = getCurrentPastChoicesKey();
+	if(isDebugging) {
+		console.log("pastChoicesKey = " + pastChoicesKey);
+	}
+
+	var pastChoices = tblPastChoices.getByKey(pastChoicesKey);
+	if(pastChoices === undefined || pastChoices === null) {
+		var choice = null;
+		if(recentChoice.route !== undefined && recentChoice.route !== null) {
+			choice = [{"scheduledStop":recentChoice, "count":1}];
+		} else {
+			if(recentChoice.stopNumber !== undefined && recentChoice.stopNumber !== null) {
+				choice = [{"numberedStop":recentChoice, "count":1}];
+			}
+		}
+		if(choice !== undefined && choice !== null) {
+			tblPastChoices.setByKey(pastChoicesKey, JSON.stringify(choice));
+			// fails: tblPastChoices.setByKey(pastChoicesKey, choice);
+		}
+		
+	} else {
+		var pastChoicesArray = JSON.parse(pastChoices);
+
+		// need to examine the pastChoice (which is actually a list of choices)
+		// need to parse the list to see if this recentChoice is already in the list
+		if(isDebugging) {
+			console.log("pastChoicesArray = " + pastChoicesArray);
+			console.log("pastChoicesArray.length = " + pastChoicesArray.length);
+		}
+		
+		var matchingChoiceIndex = -1;
+		var isScheduledStop = true;   // as opposed to isNumberedStop
+		if(recentChoice.stopNumber !== undefined && recentChoice.stopNumber !== null) {
+			isScheduledStop = false;
+		}
+		for(var i = 0; i < pastChoicesArray.length; i++) {
+			// look for a match to recentChoice
+
+			if(isScheduledStop && pastChoicesArray[i].scheduledStop !== undefined) {
+				if(recentChoice.route === pastChoicesArray[i].scheduledStop.route &&
+				   recentChoice.direction === pastChoicesArray[i].scheduledStop.direction &&
+				   recentChoice.stop === pastChoicesArray[i].scheduledStop.stop) {
+					   //
+				   matchingChoiceIndex = i;
+				   break;   // break out of the for loop
+			   }
+			} else {
+				if(!isScheduledStop && pastChoicesArray[i].numberedStop !== undefined) {
+					// is a Numbered Stop like: {"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"}
+					if(recentChoice.stopNumber === pastChoicesArray[i].numberedStop.stopNumber &&
+	//				   recentChoice.latitude == pastChoicesArray[i].numberedStop.latitude &&
+	//				   recentChoice.longitude == pastChoicesArray[i].numberedStop.longitude &&
+					   recentChoice.description === pastChoicesArray[i].numberedStop.description &&
+					   recentChoice.routeFilter === pastChoicesArray[i].numberedStop.routeFilter) {
+						   //
+					   matchingChoiceIndex = i;
+					   break;   // break out of the for loop
+					}
+				}
+			}
+		}
+		
+		if(matchingChoiceIndex === -1) {
+			// create a new element of the pastChoice[] array
+			var choice;
+			if(isScheduledStop) {
+				choice = {"scheduledStop":recentChoice, "count":1};
+			} else {
+				choice = {"numberedStop":recentChoice, "count":1};				
+			}
+			pastChoicesArray.push(choice);
+			tblPastChoices.setByKey(pastChoicesKey, JSON.stringify(pastChoicesArray));
+		} else {
+			// increment the count on this element of the pastChoice[] array and save it.
+			pastChoicesArray[matchingChoiceIndex].count += 1;
+			tblPastChoices.setByKey(pastChoicesKey, JSON.stringify(pastChoicesArray));
+		}
+	}
+}
 
 // todo
 //     First time experience
@@ -231,6 +357,9 @@ function showStop2(enteredStopNumber) {
 		console.log("showStop2  stopNumberInfo=" + JSON.stringify(stopNumberInfo));
 	}
 	saveNumberedBusStopInfo(stopNumberInfo);
+	
+	savePastChoice(stopNumberInfo);
+	
 	showStop(stopNumberInfo.stopNumber);
 	
 	document.getElementById("collapseDetails").classList.remove("collapse");
@@ -907,6 +1036,13 @@ function populateDepartures(route, direction, stop, responseText) {
 				hasBlockNumberMatch = true;
 			}
 		}
+		
+		if(hasBlockNumberMatch) {
+			// var recentChoice = new {route: route.toString(), direction: direction.toString(), stop: stop}; 
+			var recentChoice = {"route":route, "direction":direction, "stop":stop }; 
+			savePastChoice(recentChoice);
+		}
+		
 		shouldShowTrackedBus = !hasBlockNumberMatch;
 		
 		if(shouldShowTrackedBus) {
@@ -1006,6 +1142,12 @@ function populateDepartures(route, direction, stop, responseText) {
 	if(isValid) {
 		// do not save until it is known to be a valid response
 		tblRouteDirectionStopDeparture.setByKey(route.toString() + "." + direction + "." + stop, responseText);
+
+		if(1==1) {
+			// var recentChoice = new {route: route.toString(), direction: direction.toString(), stop: stop}; 
+			var recentChoice = {"route":route, "direction":direction, "stop":stop }; 
+			savePastChoice(recentChoice);
+		}
 		
 		if(stop !== myStop) {
 			myStop = stop;
@@ -1761,6 +1903,18 @@ function addMarker(busLocation) {
 }
 // ----- create map and add markers ------ end
 
+function clearPastChoices() {
+	if(isDebugging) {
+		console.debug("clearPastChoices() starting.");
+	}
+	
+	tblPastChoices.deleteAll();
+
+	if(isDebugging) {
+		console.debug("clearPastChoices() done.");
+	}
+}
+
 function clearVehicleTracking() {
 	if(isDebugging) {
 		console.debug("clearVehicleTracking() starting.");
@@ -2076,10 +2230,34 @@ if(Modernizr.localstorage) {
 	var firstChoice = document.getElementById("recentChoice0");
 	if(firstChoice !== undefined && firstChoice !== null && firstChoice.classList.contains("hidden") === false) {
 		document.getElementById("collapseChoices").classList.remove("collapse");
+		
+		// if tblPastChoices has a favorite based on .count for this day of week and hour of day, pre-click it.
+		var choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey());
+		if(choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
+			var arrayOfChoices = JSON.parse(choicesForThisDayHour);
+			if(arrayOfChoices !== undefined && arrayOfChoices !== null && arrayOfChoices.length > 0) {
+				// find the maximum .count
+				var bestIndex = 0;
+				for(var i = 1; i < arrayOfChoices.length; i++) {
+					if(arrayOfChoices[bestIndex].count < arrayOfChoices[i].count) {
+						bestIndex = i;
+					}
+				}
+				var choice = null;
+				if(arrayOfChoices[bestIndex].scheduledStop !== undefined) {
+					choice = arrayOfChoices[bestIndex].scheduledStop;
+					routeDirectionStopClicked(choice.route, choice.direction, choice.stop, choice.stopDescription);
+
+				} else {
+					choice = arrayOfChoices[bestIndex].numberedStop;
+					showStop(choice.stopNumber);
+				}
+			}
+		}
 	} else {
 		document.getElementById("collapseRoute").classList.remove("collapse");
 		document.getElementById("collapseBusStop").classList.remove("collapse");
-	}
+	}	
 }
 
 var loadingElement = document.getElementById("page-loader");
