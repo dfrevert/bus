@@ -1915,6 +1915,23 @@ function clearPastChoices() {
 	}
 }
 
+function clearPastChoicesOfNow() {
+	if(isDebugging) {
+		console.debug("clearPastChoicesOfNow() starting.");
+	}
+	
+// 	var pastChoices = tblPastChoices.getByKey(pastChoicesKey);
+	if(tblPastChoices !== undefined && tblPastChoices !== null) {
+		// if(pastChoices !== undefined && pastChoices !== null)
+			var pastChoicesKey = getCurrentPastChoicesKey();
+			tblPastChoices.removeByKey(pastChoicesKey);
+	}
+
+	if(isDebugging) {
+		console.debug("clearPastChoicesOfNow() done.");
+	}
+}
+
 function clearVehicleTracking() {
 	if(isDebugging) {
 		console.debug("clearVehicleTracking() starting.");
