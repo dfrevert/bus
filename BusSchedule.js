@@ -2,19 +2,23 @@
 
 "use strict";
 
-var version = '20190323_1959';
+var version = '20190426_2036';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
 Can the probable "Previous Choice" be guessed and pre-clicked?
-Break the day into 6 hour blocks
-Save the "first" chosen "Previous Choice" on each load of the page.
-When last 3 choices match, start pre-selecting that choice. 
+Break time into day of week + hour blocks
+Count clicked "Previous Choice"s.
+Preselect the winning choice.
 
+Problems:  
+	2019-04-24   On startup tblRecentChoice had entries for .10, .11, .12, .13, .14 which were above the buttonMax
+					Added a delete all recent choices Util button, but that is not a permanent solution
 */
 
+// ----------------------------------------------------------------------- start
 // This script is released to the public domain and may be used, modified and
 // distributed without restrictions. Attribution not necessary but appreciated.
 // Source: https://weeknumber.net/how-to/javascript
@@ -31,6 +35,7 @@ Date.prototype.getWeek = function() {
   return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000
                         - 3 + (week1.getDay() + 6) % 7) / 7);
 }
+// ----------------------------------------------------------------------- end
 
 if(isDebugging) {
 	if (Modernizr.localstorage) {
@@ -199,6 +204,13 @@ function getCurrentPastChoicesKey() {
 }
 
 function savePastChoice(recentChoice) {
+	if(isShouldSavePastChoice === undefined || isShouldSavePastChoice === null || !isShouldSavePastChoice) {
+		if(isDebugging) {
+			console.log("savePastChoice is skipped because isShouldSavePastChoice is not true.");
+		}
+		return;
+	}
+
 	// var now = new Date();
 	// now.getWeek().toString()+','+
 	// var pastChoicesKey = now.getDay().toString()+','+now.getHours().toString();
@@ -362,8 +374,8 @@ function showStop2(enteredStopNumber) {
 	
 	showStop(stopNumberInfo.stopNumber);
 	
-	document.getElementById("collapseDetails").classList.remove("collapse");
-	document.getElementById("collapseRoute").classList.add("collapse");
+	document.getElementById("collapseDetails").classList.add("show");
+	document.getElementById("collapseRoute").classList.remove("show");
 }
 
 function showStop(stopNumber) {
@@ -746,7 +758,7 @@ function busNumberClicked2(blockNumber, routeNumber) {
 		if(targetStop !== undefined && targetStop !== null) {
 			myBlockNumber = blockNumber;
 			myStop = null;
-//			document.getElementById("collapseMap").classList.remove("collapse");			
+//			document.getElementById("collapseMap").classList.add("show");			
 //			initializeMap2(targetStop);
 		}
 	}
@@ -763,7 +775,7 @@ function busNumberClicked(blockNumber) {
 			stop = tblStop.getByKey(myStop);
 			if(stop !== undefined && stop !== null) {
 				stopMine = JSON.parse(stop);
-				document.getElementById("collapseMap").classList.remove("collapse");			
+				document.getElementById("collapseMap").classList.add("show");			
 				initializeMap2(stopMine);
 				if(isDebugging) {
 					console.log("busNumberClicked(" +blockNumber.toString() + ") myStop found: stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
@@ -779,7 +791,7 @@ function busNumberClicked(blockNumber) {
 					if(isDebugging) {
 						console.log("busNumberClicked(" +blockNumber.toString() + ") map did not exist, a NumberedStop found.");
 					}
-					document.getElementById("collapseMap").classList.remove("collapse");			
+					document.getElementById("collapseMap").classList.add("show");			
 					initializeMap2(targetStop);
 				} else {
 					if(isDebugging) {
@@ -983,8 +995,8 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 			+ "  myStop=" + myStop);
 	}
 	// open the details section
-	document.getElementById("collapseDetails").classList.remove("collapse");
-	document.getElementById("collapseBusStop").classList.add("collapse");
+	document.getElementById("collapseDetails").classList.add("show");
+	document.getElementById("collapseBusStop").classList.remove("show");
 	
 	getDepartures(route, direction, stop);
 }
@@ -1035,12 +1047,6 @@ function populateDepartures(route, direction, stop, responseText) {
 			if(arr[i].BlockNumber === myBlockNumber) {
 				hasBlockNumberMatch = true;
 			}
-		}
-		
-		if(hasBlockNumberMatch) {
-			// var recentChoice = new {route: route.toString(), direction: direction.toString(), stop: stop}; 
-			var recentChoice = {"route":route, "direction":direction, "stop":stop }; 
-			savePastChoice(recentChoice);
 		}
 		
 		shouldShowTrackedBus = !hasBlockNumberMatch;
@@ -1200,7 +1206,7 @@ function populateDepartures(route, direction, stop, responseText) {
 		showBusLocation2(route, actualBlockNumber);
 	}
 	
-	document.getElementById("collapseDetails").classList.remove("collapse");				
+	document.getElementById("collapseDetails").classList.add("show");				
 }
 
 function getStopDescription(route, direction, stop) {
@@ -1903,6 +1909,18 @@ function addMarker(busLocation) {
 }
 // ----- create map and add markers ------ end
 
+function clearRecentChoices() {
+	if(isDebugging) {
+		console.debug("clearRecentChoices() starting.");
+	}
+	
+	tblRecentChoice.deleteAll();
+
+	if(isDebugging) {
+		console.debug("clearRecentChoices() done.");
+	}
+}
+
 function clearPastChoices() {
 	if(isDebugging) {
 		console.debug("clearPastChoices() starting.");
@@ -1996,8 +2014,14 @@ function clearTracking() {
 }
 
 var isPartOfDeleteRecentChoice = false;
+var isShouldSavePastChoice = false;
 function selectRecentChoice(i) {
 	if(!isPartOfDeleteRecentChoice) {
+		if(isDebugging) {
+			console.log("selectRecentChoice(i) based on i=" + i.toString());
+		}
+
+		isShouldSavePastChoice = false;
 		var recentValue = tblRecentChoice.getByKey(i.toString());
 		if(isDebugging) {
 			if(recentValue === undefined || recentValue === null) {
@@ -2013,11 +2037,13 @@ function selectRecentChoice(i) {
 				}
 			}
 			if(parsedRecentChoice.stop !== undefined) {
+				isShouldSavePastChoice = true;
 				isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 				getDepartures(parsedRecentChoice.route, parsedRecentChoice.direction, parsedRecentChoice.stop);
 				return true;
 			}
 			if(parsedRecentChoice.stopNumber !== undefined) {
+				isShouldSavePastChoice = true;
 				// msg = parsedRecentChoice.stopNumber;
 				isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 				showStop2(parsedRecentChoice);
@@ -2236,17 +2262,15 @@ var myDirection = -1; // 1;
 var myStop = '';
 
 var myBlockNumber = 0;
-var myBlockNumberTimeout = new Date(2018,1,1);
+var myBlockNumberTimeout = new Date(2019,4,1);
 
 var isCurrentTargetANumberedBusStop = false;    //  numbered vs scheduled bus stop
 
 if(Modernizr.localstorage) {
 	resetRecentChoiceButtons();
 	
-	// if any button is loaded, open the "collapseChoices" section
 	var firstChoice = document.getElementById("recentChoice0");
-	if(firstChoice !== undefined && firstChoice !== null && firstChoice.classList.contains("hidden") === false) {
-		document.getElementById("collapseChoices").classList.remove("collapse");
+	if(firstChoice !== undefined && firstChoice !== null && !firstChoice.classList.contains("hidden")) {
 		
 		// if tblPastChoices has a favorite based on .count for this day of week and hour of day, pre-click it.
 		var choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey());
@@ -2269,12 +2293,17 @@ if(Modernizr.localstorage) {
 					choice = arrayOfChoices[bestIndex].numberedStop;
 					showStop(choice.stopNumber);
 				}
-			}
+			} else {
+				// if any button is loaded, open the "collapseChoices" section
+				document.getElementById("collapseChoices").classList.add("show");
+			} 
+		} else {
+			document.getElementById("collapseChoices").classList.add("show");
 		}
 	} else {
-		document.getElementById("collapseRoute").classList.remove("collapse");
-		document.getElementById("collapseBusStop").classList.remove("collapse");
-	}	
+		document.getElementById("collapseRoute").classList.add("show");
+		document.getElementById("collapseBusStop").classList.add("show");
+	}
 }
 
 var loadingElement = document.getElementById("page-loader");
@@ -2283,4 +2312,4 @@ loadingElement.classList.add("hidden");
 
 document.getElementById("page-loaded").style.display = "block";
 
-
+$("footer div small")[0].innerText = "version " + version;
