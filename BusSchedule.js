@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20190426_2036';
+var version = '20190509_1302';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -19,10 +19,8 @@ Problems:
 */
 
 // ----------------------------------------------------------------------- start
-// This script is released to the public domain and may be used, modified and
-// distributed without restrictions. Attribution not necessary but appreciated.
 // Source: https://weeknumber.net/how-to/javascript
-
+// 
 // Returns the ISO week of the date.
 Date.prototype.getWeek = function() {
   var date = new Date(this.getTime());
@@ -2313,3 +2311,128 @@ loadingElement.classList.add("hidden");
 document.getElementById("page-loaded").style.display = "block";
 
 $("footer div small")[0].innerText = "version " + version;
+
+/* added to support Modal popup ---- start */
+
+// Get the modal
+var modal = document.getElementById('myModal');
+
+// Get the button that opens the modal
+//var btn = document.getElementById("myBtn");
+
+// Get the <span> element that closes the modal
+var span = document.getElementsByClassName("close")[0];
+
+// When the user clicks on the button, open the modal
+//btn.onclick = function() {
+//  modal.style.display = "block";
+//}
+
+// When the user clicks on <span> (x), close the modal
+span.onclick = function() {
+  modal.style.display = "none";
+}
+
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+} 
+
+// Not from the W3 example code:
+
+function showPastChoices() {
+	// build a table from tblPastChoices
+	//          Day of week, Hour, Choice Button text, Count
+	// 
+	var out = '<div id="idPastChoicesTable">';
+	out += '  <table class="table table-striped table-sm"><thead><tr><th>Day</th><th>Hour</th><th>Stop</th><th>Count</th></tr></thead>';
+	out += '    <tbody>';
+	
+	var iDay = 0;
+	var iHour = 0;
+	var pastChoicesKey = iDay.toString()+','+iHour.toString();
+	var tblPastChoiceOfDayAndHour;
+
+	for(iDay = 0; iDay < 7; iDay++) {
+		for(iHour = 0; iHour < 24; iHour++) {
+			pastChoicesKey = iDay.toString()+','+iHour.toString();
+		
+			tblPastChoiceOfDayAndHour = tblPastChoices.getByKey(pastChoicesKey);
+			if(tblPastChoiceOfDayAndHour !== undefined && tblPastChoiceOfDayAndHour !== null) {
+				
+				var pastChoicesArray = JSON.parse(tblPastChoiceOfDayAndHour);
+				
+				// sort the array (descending)
+				pastChoicesArray.sort(function(a, b){return b.count - a.count});
+
+				if(isDebugging) {
+					console.log("pastChoicesArray = " + pastChoicesArray);
+					console.log("pastChoicesArray.length = " + pastChoicesArray.length);
+				}
+				
+				for(var i = 0; i < pastChoicesArray.length; i++) {
+					// look for a match to recentChoice
+
+					if(pastChoicesArray[i].scheduledStop !== undefined) {
+						// handle the button text of a scheduled stop
+						out += '<tr><td>' + dayOfWeekAsMinimumString(iDay) 
+						    + '</td><td>' + hourOfDayAsMinimumString(iHour) 
+							+ '</td><td>' + pastChoicesArray[i].scheduledStop.route.toString() + ' - ' + directionAsString(pastChoicesArray[i].scheduledStop.direction) + ' - ' + pastChoicesArray[i].scheduledStop.stop 
+							+ '</td><td>' + pastChoicesArray[i].count.toString() 
+							+ '</td></tr>';
+						
+					} else {
+						if(pastChoicesArray[i].numberedStop !== undefined) {
+							// handle the button text of a numbered stop
+							// 	{"numberedStop":{"stopNumber":17884,"latitude":44.976246,"longitude":-93.267772,"description":"Capella to Home","routeFilter":"14[^E]"},"count":1}
+							var buttonText = pastChoicesArray[i].numberedStop.stopNumber.toString();
+							if(pastChoicesArray[i].numberedStop.description !== undefined && pastChoicesArray[i].numberedStop.description !== null) {
+								buttonText += ' - ' + pastChoicesArray[i].numberedStop.description;
+							}
+							if(pastChoicesArray[i].numberedStop.routeFilter !== undefined && pastChoicesArray[i].numberedStop.routeFilter !== null) {
+								buttonText += ' ' + pastChoicesArray[i].numberedStop.routeFilter;
+							}
+							
+							out += '<tr><td>' + dayOfWeekAsMinimumString(iDay) 
+								+ '</td><td>' + hourOfDayAsMinimumString(iHour) 
+								+ '</td><td>' + buttonText 
+								+ '</td><td>' + pastChoicesArray[i].count.toString() 
+								+ '</td></tr>';
+						}
+					}
+				}
+			}
+		}
+	}
+
+    out += "</tbody></table></div>";
+
+	var idPastChoicesTable = document.getElementById("idPastChoicesTable");
+    idPastChoicesTable.innerHTML = out;
+	idPastChoicesTable.style.display = "block";
+
+	modal.style.display = "block";
+}
+
+function dayOfWeekAsMinimumString(dayOfWeek) {
+	if(dayOfWeek === 0) return 'Su';
+	if(dayOfWeek === 1) return 'M';
+	if(dayOfWeek === 2) return 'Tu';
+	if(dayOfWeek === 3) return 'W';
+	if(dayOfWeek === 4) return 'Th';
+	if(dayOfWeek === 5) return 'F';
+	if(dayOfWeek === 6) return 'Sa';
+	return '??';
+}
+
+function hourOfDayAsMinimumString(hourOfDay) {
+	if(hourOfDay === 0) return '12am';
+	if(1 <= hourOfDay && hourOfDay <= 11) return hourOfDay.toString() + 'am';
+	if(hourOfDay === 12) return '12pm';
+	if(13 <= hourOfDay && hourOfDay <= 23) return (hourOfDay - 12).toString() + 'pm';
+	return '??';
+}
+
+/* added to support Modal popup ---- end */
