@@ -2,7 +2,7 @@
 
 "use strict";
 
-var version = '20190509_1302';
+var version = '20190510_1550';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
@@ -2282,14 +2282,21 @@ if(Modernizr.localstorage) {
 						bestIndex = i;
 					}
 				}
+				if(isDebugging) {
+					console.log("arrayOfChoices[bestIndex]  bestIndex = " + bestIndex);
+				}
 				var choice = null;
 				if(arrayOfChoices[bestIndex].scheduledStop !== undefined) {
 					choice = arrayOfChoices[bestIndex].scheduledStop;
 					routeDirectionStopClicked(choice.route, choice.direction, choice.stop, choice.stopDescription);
 
 				} else {
-					choice = arrayOfChoices[bestIndex].numberedStop;
-					showStop(choice.stopNumber);
+					if(arrayOfChoices[bestIndex].numberedStop !== undefined) {
+						choice = arrayOfChoices[bestIndex].numberedStop;
+						showStop(choice.stopNumber);
+					} else {
+						document.getElementById("collapseChoices").classList.add("show");
+					}
 				}
 			} else {
 				// if any button is loaded, open the "collapseChoices" section
