@@ -2,20 +2,27 @@
 
 "use strict";
 
-var version = '20190510_1550';
+var version = '20190513_2143';
 
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
-Can the probable "Previous Choice" be guessed and pre-clicked?
+Can the probable "Previous Choice" be guessed and pre-clicked? Yes
 Break time into day of week + hour blocks
-Count clicked "Previous Choice"s.
-Preselect the winning choice.
 
 Problems:  
 	2019-04-24   On startup tblRecentChoice had entries for .10, .11, .12, .13, .14 which were above the buttonMax
 					Added a delete all recent choices Util button, but that is not a permanent solution
+					
+	2019-05-12   day of week + hour block may have no entries, if so, look for the previous day of week + hour
+	
+	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
+	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
+	
+	2019-05-12   buttonMax is set in stone.  Can it be increased to 20 without destroying everything?
+	
+	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.
 */
 
 // ----------------------------------------------------------------------- start
@@ -195,10 +202,14 @@ var tblPastChoices = new DbTable(db1, 'PastChoices');
 
 // ---------------- localStorage as object -- end
 
-function getCurrentPastChoicesKey() {
-	var now = new Date();
-	// now.getWeek().toString()+','+
-	return now.getDay().toString()+','+now.getHours().toString();
+function getCurrentPastChoicesKey(dDay, dHour) {
+	if(dDay === undefined || dDay === null) {dDay = 0;}
+	if(dHour === undefined || dHour === null) {dHour = 0;}
+	
+	var now = new Date(); 
+	var nowAdjusted = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dDay, now.getHours() + dHour, 0, 0);
+	
+	return nowAdjusted.getDay().toString()+','+nowAdjusted.getHours().toString();
 }
 
 function savePastChoice(recentChoice) {
@@ -209,9 +220,6 @@ function savePastChoice(recentChoice) {
 		return;
 	}
 
-	// var now = new Date();
-	// now.getWeek().toString()+','+
-	// var pastChoicesKey = now.getDay().toString()+','+now.getHours().toString();
 	var pastChoicesKey = getCurrentPastChoicesKey();
 	if(isDebugging) {
 		console.log("pastChoicesKey = " + pastChoicesKey);
@@ -229,7 +237,6 @@ function savePastChoice(recentChoice) {
 		}
 		if(choice !== undefined && choice !== null) {
 			tblPastChoices.setByKey(pastChoicesKey, JSON.stringify(choice));
-			// fails: tblPastChoices.setByKey(pastChoicesKey, choice);
 		}
 		
 	} else {
@@ -2269,9 +2276,20 @@ if(Modernizr.localstorage) {
 	
 	var firstChoice = document.getElementById("recentChoice0");
 	if(firstChoice !== undefined && firstChoice !== null && !firstChoice.classList.contains("hidden")) {
-		
+
 		// if tblPastChoices has a favorite based on .count for this day of week and hour of day, pre-click it.
 		var choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey());
+		
+		if(choicesForThisDayHour === undefined || choicesForThisDayHour === null) {
+			// nothing for now (today), how about yesterday at the same time
+			choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey(-1, 0));
+		}
+
+		if(choicesForThisDayHour === undefined || choicesForThisDayHour === null) {
+			// nothing for now (today), how about today, one hour earlier
+			choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey(0, -1));
+		}
+		
 		if(choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
 			var arrayOfChoices = JSON.parse(choicesForThisDayHour);
 			if(arrayOfChoices !== undefined && arrayOfChoices !== null && arrayOfChoices.length > 0) {
