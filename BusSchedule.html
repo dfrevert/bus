@@ -50,7 +50,6 @@ div#id00C button.btn.btn-primary,
 	margin-bottom: 6px;
 }
 
-
 /* based on www.w3schools.com/howto/howto_css_loader.asp */
 .loader {
   border: 8px solid #00f3f3;
@@ -69,6 +68,11 @@ div#id00C button.btn.btn-primary,
 }
 
 /* added to support the Modal popup -- start */
+
+#popupModal .modal-content {
+	width: 60%;
+}
+
 .modal {
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
@@ -110,7 +114,7 @@ div#id00C button.btn.btn-primary,
 /* Modal Header */
 .modal-header {
   padding: 2px 16px;
-  background-color: darkred; // was: #5cb85c;
+  background-color: darkred;
   color: white;
 }
 
@@ -127,14 +131,14 @@ div#id00C button.btn.btn-primary,
 /* Modal Content */
 .modal-content {
   position: relative;
-  background-color: #fefefe;
-  margin: auto;
+/*  background-color: #fefefe; */
+/*  margin: auto;              */
   padding: 0;
-  border: 1px solid #888;
-  width: 90%; // was 80%;
+/*  border: 1px solid #888;    */
+/*  width: 90%;                */
   box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
   animation-name: animatetop;
-  animation-duration: 0.4s
+  animation-duration: 0.4s;
 }
 
 /* Add Animation */
@@ -279,20 +283,36 @@ div#id00C button.btn.btn-primary,
 	</div>
 </div>
 <div id="myModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Past Choices </h3>
-      <span class="close">&times;</span>
-    </div>
-    <div class="modal-body">
-	  <div id="idPastChoicesTable"></div>
-    </div>
+	<div class="modal-content">
+		<div class="modal-header">
+			<h3>Past Choices </h3>
+			<span class="close">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div id="idPastChoicesTable"></div>
+		</div>
 	<!-- 
-    <div class="modal-footer">
-      <h3>Past Choices</h3>
-    </div>
+		<div class="modal-footer">
+			<h3>Past Choices</h3>
+		</div>
 	-->
-  </div>
+	</div>
+</div>
+<div id="popupModal" class="modal">
+	<div class="modal-content">
+		<div class="modal-header">
+			<h4>Bus Schedule</h4>
+			<span class="close">&times;</span>
+		</div>
+		<div class="modal-body">
+			<div id="idPopupModalBody"></div>
+		</div>
+	<!-- 
+		<div class="modal-footer">
+			<h3>Past Choices</h3>
+		</div>
+	-->
+	</div>
 </div>
 <footer class="footer bg-dark" >
 	<div class="container text-center text-muted" >
@@ -303,6 +323,7 @@ div#id00C button.btn.btn-primary,
 <script src='modernizr/modernizr.js'></script>
 <script src='jquery/jquery-3.3.1.min.js'></script>
 <script src="bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script>
+<script src='long-press-event/long-press-event.js'></script>
 <script src='BusSchedule.js'></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCsZ0T2Q9DZ5naamWI5WEyYEqWcbxPgCs0&callback=initializeMap" async defer></script>
 </body>
