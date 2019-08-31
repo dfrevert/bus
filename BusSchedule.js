@@ -8,8 +8,7 @@
 
 "use strict";
 
-var version = '20190621_1508';
-
+const version = "201900830_1022";
 var isDebugging = false;
 var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -17,22 +16,25 @@ var buttonMax = 10; // number of recentChoiceButtons, an array from 0 to buttonM
 Can the probable "Previous Choice" be guessed and pre-clicked? Yes
 Break time into day of week + hour blocks
 
-Problems:  
+Problems:
 	2019-04-24   On startup tblRecentChoice had entries for .10, .11, .12, .13, .14 which were above the buttonMax
 					Added a delete all recent choices Util button, but that is not a permanent solution
 					
-	2019-05-12   day of week + hour block may have no entries, if so, look for the previous day of week + hour
+	2019-05-12   day of week + hour block may have no entries, if so, look at the previous day + same hour; same day + previous hour. -done-
 	
 	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
 	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
 	
 	2019-05-12   buttonMax is set in stone.  Can it be increased to 20 without destroying everything?
 	
-	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.
+	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.  
 	
-	2019-06-21   use eslint
-	2019-06-21   convert alert(msg) to popupModal(msg)
-	2019-06-21   long pause Route and Stop buttons so that local storage can be dropped and reloaded.
+	2019-06-21   use eslint -done-
+	2019-06-21   convert alert(msg) to popupModal(msg) -done-
+	2019-06-21   long pause Route and Stop buttons so that local storage can be dropped and reloaded.  -done-
+
+	2019-08-30   something is wrong with the loading of the relevant "Past Choice".  There was.  BusDB.ActiveNumberedBusStop needed to be set.
+				 
 */
 
 // ----------------------------------------------------------------------- start
@@ -40,20 +42,20 @@ Problems:
 // 
 // Returns the ISO week of the date.
 Date.prototype.getWeek = function() {
-  var date = new Date(this.getTime());
-  date.setHours(0, 0, 0, 0);
-  // Thursday in current week decides the year.
-  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-  // January 4 is always in week 1.
-  var week1 = new Date(date.getFullYear(), 0, 4);
-  // Adjust to Thursday in week 1 and count number of weeks from date to week1.
-  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000
-                        - 3 + (week1.getDay() + 6) % 7) / 7);
+	var date = new Date(this.getTime());
+	date.setHours(0, 0, 0, 0);
+	// Thursday in current week decides the year.
+	date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+	// January 4 is always in week 1.
+	var week1 = new Date(date.getFullYear(), 0, 4);
+	// Adjust to Thursday in week 1 and count number of weeks from date to week1.
+	return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000
+						- 3 + (week1.getDay() + 6) % 7) / 7);
 }
 // ----------------------------------------------------------------------- end
 
 if(isDebugging) {
-	if (Modernizr.localstorage) { // eslint-disable-line no-undef
+	if (Modernizr.localstorage) {
 		console.log("localStorage is supported.");
 	} else {
 		console.warn("localStorage is NOT supported.");
@@ -1246,48 +1248,12 @@ function getStopDescription(route, direction, stop) {
 	return "";
 }
 
-/* // dead code
-function showRecentNumberedStop(buttonIndex, description) {
-	var recentIElement = document.getElementById("recentStop" + buttonIndex);
-	if(recentIElement === undefined || recentIElement === null) {
-		if(isDebugging) {
-			console.log("showRecentNumberedStop(buttonIndex, description) failed.  buttonIndex=" + buttonIndex + "  description=" + description);
-		}
-		return;
-	}
-	recentIElement.hidden = false;
-	recentIElement.classList.remove("hidden");
-	recentIElement.innerHTML = description === undefined || description === null || description === "" ? "&nbsp;" : description;
-}
-*/
-
 // example: var s = directionAsString(recentStop.direction);
 function directionAsString(direction) {
 	// 1 South, 2 East, 3 West, 4 North
 	// console.log("directionAsString()  direction=" + direction);
 	return direction === 1 ? "S" : direction === 2 ? "E" : direction === 3 ? "W" : direction === 4 ? "N" : "?";
 }
-
-/*  // dead code
-function getRouteDirectionStopActiveDotI(i) {
-	var fullKey = '' + i;
-	var raw = tblRouteDirectionStopActive.getByKey(fullKey);
-	if(raw === undefined || raw === null) {
-		if(isDebugging) {
-			console.log("getRouteDirectionStopActiveDotI(" + i + ") will return null because tblRouteDirectionStopActive.getByKey(" + i + ") returned null");
-		}
-		return null;
-	}
-	return JSON.parse(raw);
-}
-*/
-
-/*   // dead code
-// Where a = line point 1; b = line point 2; c = point to check against.
-function isLeftOfLine(pointAOnLine, pointBOnLine, pointC) {
-	return (pointBOnLine.longitude - pointAOnLine.longitude)*(pointC.latitude - pointAOnLine.latitude) > (pointBOnLine.latitude - pointAOnLine.latitude)*(pointC.longitude - pointAOnLine.longitude);
-}
-*/
 
 function distance(latitude1, longitude1, latitude2, longitude2) {
 	return Math.sqrt(Math.pow(latitude1 - latitude2, 2) + Math.pow(longitude1 - longitude2, 2));
@@ -1310,21 +1276,6 @@ function distanceInMiles3Digits(arrRow) {
 	var strMiles = distanceInMiles(arrRow).toString();
 	return strMiles.substr(0, 4);
 }
-
-/*   // dead code
-function busStopWayPoint(arrRow) {
-	if(arrRow.Route==="133") {
-		return Marquette400S;  //400 S Marquette
-	}
-	if(arrRow.Route==="7") {
-		return FourthStreet215S;   //215 S 4th St - #7    FourthStreet215S
-	}
-	if(arrRow.Route==="14") {
-		return SixthStreet201S;  //Capella Tower
-	}
-	return null;
-}
-*/
 
 function distanceInMiles(arrRow) {
 	var busAtPoint = {latitude:arrRow.VehicleLatitude, longitude:arrRow.VehicleLongitude};
@@ -1575,24 +1526,6 @@ function passedMilestone(arrRow) {
 	return {detail: "Route not implemented.",
 			simple: "n/a"};
 }
-
-/*   // dead code
-function timeSince(when) { // this ignores months
-	var obj = {};
-	obj._milliseconds = (new Date()).valueOf() - when.valueOf();
-	obj.milliseconds = obj._milliseconds % 1000;
-	obj._seconds = (obj._milliseconds - obj.milliseconds) / 1000;
-	obj.seconds = obj._seconds % 60;
-	obj._minutes = (obj._seconds - obj.seconds) / 60;
-	obj.minutes = obj._minutes % 60;
-	obj._hours = (obj._minutes - obj.minutes) / 60;
-	obj.hours = obj._hours % 24;
-	obj._days = (obj._hours - obj.hours) / 24;
-	obj.days = obj._days % 365;
-	obj.years = (obj._days - obj.days) / 365;
-	return obj;
-}
-*/
 
 // -------------------------------- local storage -- start
 // see http://diveintohtml5.info/storage.html
@@ -2294,15 +2227,29 @@ if(Modernizr.localstorage) {
 
 		// if tblPastChoices has a favorite based on .count for this day of week and hour of day, pre-click it.
 		var choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey());
-		
+
+		if(isDebugging && choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
+			console.log("loaded choicesForThisDayHour based on Now");
+		}
+
 		if(choicesForThisDayHour === undefined || choicesForThisDayHour === null) {
 			// nothing for now (today), how about yesterday at the same time
 			choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey(-1, 0));
+
+			if(isDebugging && choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
+				console.log("loaded choicesForThisDayHour based on (-1, 0)");
+			}
+
 		}
 
 		if(choicesForThisDayHour === undefined || choicesForThisDayHour === null) {
 			// nothing for now (today), how about today, one hour earlier
 			choicesForThisDayHour = tblPastChoices.getByKey(getCurrentPastChoicesKey(0, -1));
+
+			if(isDebugging && choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
+				console.log("loaded choicesForThisDayHour based on (0, -1)");
+			}
+
 		}
 		
 		if(choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
@@ -2326,6 +2273,10 @@ if(Modernizr.localstorage) {
 				} else {
 					if(arrayOfChoices[bestIndex].numberedStop !== undefined) {
 						choice = arrayOfChoices[bestIndex].numberedStop;
+
+						// needs to set the BusDB.ActiveNumberedBusStop, so that showStop can use it?
+						db1.setByKey("ActiveNumberedBusStop", JSON.stringify(choice));
+
 						showStop(choice.stopNumber);
 					} else {
 						document.getElementById("collapseChoices").classList.add("show");
@@ -2336,6 +2287,11 @@ if(Modernizr.localstorage) {
 				document.getElementById("collapseChoices").classList.add("show");
 			} 
 		} else {
+
+			if(isDebugging) {
+				console.log("loaded choicesForThisDayHour nothing found.");
+			}
+
 			document.getElementById("collapseChoices").classList.add("show");
 		}
 	} else {
@@ -2344,12 +2300,7 @@ if(Modernizr.localstorage) {
 	}
 }
 
-var loadingElement = document.getElementById("page-loader");
-loadingElement.hidden = true;
-loadingElement.classList.add("hidden");
-
-document.getElementById("page-loaded").style.display = "block";
-
+// move this above the loadingElement being hidded and "real" page getting loaded.
 $("footer div small")[0].innerText = "version " + version;
 
 
@@ -2534,3 +2485,13 @@ selectStopButton.addEventListener("long-press", function(e) {
 	tblRouteDirectionStops.removeByKey(myRoute + '.' + myDirection);
 	popupModal("Stops cleared for this route and direction to allow reloading.");
 });
+
+// show the "real" page
+
+var loadingElement = document.getElementById("page-loader");
+loadingElement.hidden = true;
+loadingElement.classList.add("hidden");
+
+document.getElementById("page-loaded").style.display = "block";
+
+
