@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201002_1258";
+const _version = "20201018_1432";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -16,8 +16,8 @@ var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to button
 Problems:
 	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
 	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
-	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.  
-	2019-06-21   long pause Route and Stop buttons so that local storage can be dropped and reloaded.  -done-
+	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.
+	2020-10-06   remove the use of innerHTML
 */
 
 // ----------------------------------------------------------------------- start
@@ -461,23 +461,43 @@ function buildStopResults(arr) {
 	$("#collapseDetails").collapse("show"); // eslint-disable-line no-undef
 
 	if(arr === undefined || arr === null || arr.length === 0) {
-		var element = document.getElementById("id00B");
-		element.innerHTML = '<div class="alert alert-warning"><strong>Warning!</strong> Metro Transit does not report any activity at the stop.</div>';
-		element.style.display = "block";
+		const elementid00B = document.getElementById("id00B");
+		
+		const newDiv = document.createElement("div");
+		newDiv.setAttribute("class", "alert alert-warning");
+		newDiv.setAttribute("id", "id00B");
+
+		const newStrong = document.createElement("strong");
+		newStrong.textContent = "Warning!";
+
+		newDiv.appendChild(newStrong);
+		newDiv.appendChild(document.createTextNode(" Metro Transit does not report any activity at the stop."));
+		newDiv.style.display = "block";
+
+		elementid00B.parentNode.replaceChild(newDiv, elementid00B);
 		return;
 	}
 
 	var i;
 
-	var out = "<div><table class=\"table table-sm table-responsive-sm table-bordered\"><tr><th>Route</th><th>Departs</th><th>Banner</th><th>Heading</th><th>Miles</th></tr>";
+	const newDiv = document.createElement("div");
+	const newTable = document.createElement("table");
+	newTable.setAttribute("class", "table table-sm table-responsive-sm table-bordered");
+	var newRow = newTable.insertRow(-1);
+	var colHeadings = ["Route", "Departs", "Banner", "Heading", "Miles"];
+
+	for (var j = 0; j < colHeadings.length; j++) {
+		var headerCell = document.createElement("th");
+		headerCell.textContent = colHeadings[j];
+		newRow.appendChild(headerCell);
+	}
 
 	var targetPoint = getActiveNumberedBusStop();
 	
 	for(i = 0; i < arr.length; i++) {
-		
+	
 		if(targetPoint !== undefined && arr[i] !== undefined && arr[i].Route !== undefined && targetPoint.routeFilter !== undefined) {
 			var iRouteAndTerminal = arr[i].Route + ((arr[i].Terminal === undefined) ? "" : arr[i].Terminal);
-			// var re = new RegExp("\\" + targetPoint.routeFilter + "\\", "g");
 			var re = new RegExp(targetPoint.routeFilter, "g");
 			if(!iRouteAndTerminal.match(re)) {
 				if(_isDebugging) {
@@ -493,42 +513,69 @@ function buildStopResults(arr) {
 			var milesAway = miles(busAtPoint, targetPoint);	
 			milesAndDirectionLetter = milesAndDirection(milesAway);
 		}
-	
-		out += "<tr><td>" +
-		// "</td><td>" +
-		(arr[i].BlockNumber === undefined ? arr[i].Route + arr[i].Terminal : '<button type="button" class="btn btn-primary btn-md" onclick="busNumberClicked2(' + arr[i].BlockNumber.toString() + ', ' + arr[i].Route +')" >' + arr[i].Route + arr[i].Terminal + ' bus:' + arr[i].BlockNumber.toString() + '</button>') +
-		"</td><td>" +
-		arr[i].DepartureText +
-		"</td><td>" +
-		arr[i].Description +
-		"</td><td>" +
-		stripBound(arr[i].RouteDirection) +
-		"</td><td>" +
-		(milesAndDirectionLetter === "" ? "&nbsp;" : milesAndDirectionLetter) +
-		"</td></tr>";
+
+		newRow = newTable.insertRow(-1);
+		var newCell = newRow.insertCell(-1);
+		if(arr[i].BlockNumber === undefined) {
+			newCell.textContent = arr[i].Route + arr[i].Terminal;
+		} else {
+			var newButton = document.createElement("button");
+			newButton.setAttribute("type", "button");
+			newButton.setAttribute("class", "btn btn-primary btn-md");
+			newButton.setAttribute("onclick", "busNumberClicked2(" + arr[i].BlockNumber.toString() + ", " + arr[i].Route +")");
+			newButton.textContent = arr[i].Route + arr[i].Terminal + ' bus:' + arr[i].BlockNumber.toString();
+			newCell.appendChild(newButton);
+		}
+
+		newCell = newRow.insertCell(-1);
+		newCell.textContent = arr[i].DepartureText;
+
+		newCell = newRow.insertCell(-1);
+		newCell.textContent = arr[i].Description;
+
+		newCell = newRow.insertCell(-1);
+		newCell.textContent = stripBound(arr[i].RouteDirection);
+
+		newCell = newRow.insertCell(-1);
+		newCell.textContent = (milesAndDirectionLetter === "" ? "" : milesAndDirectionLetter);
 	}
-	out += "</table></div>";
-	document.getElementById("id00B").innerHTML = out;
+	var elementid00B = document.getElementById("id00B");
+	newTable.setAttribute("id", "id00B");
+	elementid00B.parentNode.replaceChild(newTable, elementid00B);
+
 	document.getElementById("id00B").style.display = "block";
 	
 	if(targetPoint !== undefined && targetPoint !== null) {
-		document.getElementById("title1").innerHTML = "Bus Schedule " + targetPoint.stopNumber;
-		
+		document.getElementById("title1").textContent = "Bus Schedule " + targetPoint.stopNumber;
 		_numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
 		
 		if(_isDebugging) {
 			console.log("buildStopResults(arr) set _numberedStopValue=" + JSON.stringify(_numberedStopValue));
 		}
-		
-		var outButton = '<button type="button" class="btn btn-primary" onclick="showStop(_numberedStopValue.stopNumber);" >' 
-					+ targetPoint.stopNumber + ' - ' 
-					+ targetPoint.description 
-					+ ((targetPoint.routeFilter === undefined) ? '' : (' ' + targetPoint.routeFilter))
-					+ '</button>';
+
+		var outButton = document.createElement("button");
+		outButton.setAttribute("id", "showStopButton");
+		outButton.setAttribute("type", "button");
+		outButton.setAttribute("class", "btn btn-primary align-baseline");
+		outButton.setAttribute("onclick", "showStop(_numberedStopValue.stopNumber);")
+		outButton.textContent = targetPoint.stopNumber + ' - '
+			+ targetPoint.description 
+			+ ((targetPoint.routeFilter === undefined) ? '' : (' ' + targetPoint.routeFilter));
+
 		var timeOfQuery = new Date();
-		outButton += '<label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
-		
-		document.getElementById("id00C").innerHTML = outButton;	
+		var outLabel = document.createElement("label");
+		outLabel.setAttribute("id", "showStopLabel");
+		outLabel.setAttribute("class", "ml-2 align-baseline");
+		outLabel.textContent = timeOfQuery.toHHMMSS();
+
+		var outDiv = document.createElement("div");
+		outDiv.setAttribute("id", "id00C");
+		outDiv.setAttribute("class", "align-baseline");
+		outDiv.appendChild(outButton);
+		outDiv.appendChild(outLabel);
+
+		var elementid00C = document.getElementById("id00C");
+		elementid00C.parentNode.replaceChild(outDiv, elementid00C);
 	}
 }
 
@@ -637,14 +684,14 @@ function rewriteActualTableData(route, blockNumber) {
 	}
 	secondsElapsed = secondsElapsed + secondsElapsedOffset;
 	
-	var s = "";
+	var s1 = "";
 	if(0 <= secondsElapsed && secondsElapsed < 100) {
-		s += secondsElapsed.toFixed(0) + " sec ago";
+		s1 = secondsElapsed.toFixed(0) + " sec ago";
 	}
 	else {
-		s += (secondsElapsed/60).toFixed(1) + " min ago";
+		s1 = (secondsElapsed/60).toFixed(1) + " min ago";
 	}
-	s += "<br>";
+//	s += "<br>";
 
 	// ScheduledStop info
 	var busAtPoint = {"latitude": busLastAt.latitude, "longitude": busLastAt.longitude};
@@ -679,12 +726,32 @@ function rewriteActualTableData(route, blockNumber) {
 	}
 
 	var milesAway = miles(busAtPoint, busStopPoint);
-	s += milesAndDirection(milesAway);
-	s += '<br>bus: ' + markupBlockNumberButton(blockNumber);
+	var s2 = milesAndDirection(milesAway);
+	// var s3 = markupBlockNumberButton(blockNumber);
 	
 	var actualRouteBlockNumber = document.getElementById("Actual_" + route.toString() + "_" + blockNumber.toString());
 	if(actualRouteBlockNumber !== undefined && actualRouteBlockNumber !== null) {
-		actualRouteBlockNumber.innerHTML = s; 
+		const newDiv = document.createElement("div");
+		newDiv.setAttribute("id", "firstCellOfDetails");
+		newDiv.setAttribute("class", "bg-success text-center");
+
+		var d1 = document.createElement("div");
+		d1.textContent = s1;
+		newDiv.appendChild(d1);
+
+		d1 = document.createElement("div");
+		d1.textContent = s2;
+		newDiv.appendChild(d1);
+
+		const newButton = document.createElement("button");
+		newButton.setAttribute("type", "button");
+		newButton.setAttribute("class", "btn btn-primary btn-sm");
+		newButton.setAttribute("onclick", "busNumberClicked(" + blockNumber.toString() + ")");
+		newButton.textContent = blockNumber.toString();
+
+		newDiv.appendChild(newButton);
+
+		actualRouteBlockNumber.parentNode.replaceChild(newDiv, actualRouteBlockNumber);
 	}
 }
 
@@ -735,18 +802,31 @@ function selectRoute() {  // eslint-disable-line no-unused-vars
 	xmlhttp3.send();
 }
 
+function dropElementChildren(elementWithChildren) {
+	while(elementWithChildren.lastElementChild) {
+		elementWithChildren.removeChild(elementWithChildren.lastElementChild);
+	}
+}
+
 function populateRoutes(responseText) {
 	var arr = JSON.parse(responseText);
-	var i;
-	// var out = '<div id="routeButtonGroup" class="btn-group btn-group-md-1" >';
-	var out = '<div id="routeButtonGroup" >';
+	var outDiv = document.createElement("div");
+	outDiv.setAttribute("id", "routeButtonGroup");
 
-	for(i = 0; i < arr.length; i++) {
-		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeClicked(' + arr[i].Route + ')" >' + arr[i].Route + '</button>';
+	for(var i = 0; i < arr.length; i++) {
+		var outButton = document.createElement("button");
+		outButton.setAttribute("type", "button");
+		outButton.setAttribute("class", "btn btn-primary");
+		outButton.setAttribute("style", "margin-right:4px; margin-bottom:4px;");
+		outButton.setAttribute("onclick", "routeClicked('" + arr[i].Route + "')");
+		outButton.textContent = arr[i].Route;
+		outDiv.appendChild(outButton);
 	}
-    out += "</div>";
-    document.getElementById("id00RouteDirectionStop").innerHTML = out;
-	document.getElementById("id00RouteDirectionStop").style.display = "block";
+
+	var elemId00 = document.getElementById("id00RouteDirectionStop");
+	dropElementChildren(elemId00);
+	elemId00.appendChild(outDiv);
+	elemId00.style.display = "block";
 }
 
 // handle the routeButtonGroup click
@@ -855,8 +935,11 @@ function routeClicked(route) {
 		$("#selectStopButton").removeClass("active");	
 	}
 	_myRoute = route;
-	// show the selected route 
-	document.getElementById('selectedRoute').innerHTML = '&nbsp;:&nbsp;' + route + '&nbsp;&nbsp;&nbsp;';
+
+	var selectedRoute = document.getElementById('selectedRoute');
+	selectedRoute.textContent = ": " + route;
+	selectedRoute.setAttribute("class", "ml-1 mr-3");
+	
 	selectRouteDirections(route);
 }
 
@@ -910,15 +993,27 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 
 function populateRouteDirections(route, responseText) {
 	var arr = JSON.parse(responseText);
-    var i;
-	var out = '<div id="routeDirectionButtonGroup">';
-    for(i = 0; i < arr.length; i++) {
-		out += '<button type="button" class="btn btn-primary" style="margin-right:4px; margin-bottom:4px;" onclick="routeDirectionClicked(' + route + ', ' + arr[i].Value + ')" >' + arr[i].Text + '</button>';
+	console.log("populateRouteDirections responseText = " + responseText );
+
+	var elemDiv = document.createElement("div");
+	elemDiv.setAttribute("id", "routeDirectionButtonGroup");
+
+    for(var i = 0; i < arr.length; i++) {
+		var elemButton = document.createElement("button");
+		elemButton.setAttribute("type", "button");
+		elemButton.setAttribute("class", "btn btn-primary");
+		elemButton.setAttribute("style", "margin-right:4px; margin-bottom:4px;");
+		elemButton.setAttribute("onclick", "routeDirectionClicked(" + route + ", " + arr[i].Value + ")");
+		elemButton.textContent = arr[i].Text;
+		elemDiv.appendChild(elemButton);
 	}
-    out += "</div>";
-    document.getElementById("id00RouteDirectionStop").innerHTML = out;
-	document.getElementById("id00RouteDirectionStop").style.display = "block";
-	
+
+	// delete all the children, then append this elemDiv
+	var elemId00 = document.getElementById("id00RouteDirectionStop");
+	dropElementChildren(elemId00);
+	elemId00.appendChild(elemDiv);
+	elemId00.style.display = "block";
+
 	$("#selectDirectionButton").addClass("active");	
 }
 
@@ -930,7 +1025,9 @@ function routeDirectionClicked(route, direction) {
 	_myRoute = route;
 	_myDirection = direction;
 
-	document.getElementById('selectedDirection').innerHTML = '&nbsp;:&nbsp;' + directionAsString(direction) + '&nbsp;&nbsp;&nbsp;';
+	var elem = document.getElementById('selectedDirection');
+	elem.textContent = ": " + directionAsString(direction);
+	elem.setAttribute("class", "ml-1 mr-3");
 
 	if(_isDebugging) {
 		console.log("routeDirectClicked(" + route + ", " + direction + ")  myRoute=" + _myRoute + "  myDirection=" + _myDirection);
@@ -977,16 +1074,24 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 }
 
 function populateRouteDirectionStops(route, direction, responseText) {
-	var arr = JSON.parse(responseText);
-    var i;
-	var out = '<div id="routeDirectionStopButtonGroup">';
-    for(i = 0; i < arr.length; i++) {
-		out += '<button type="button" class="btn btn-primary" style="margin-right: 6px; margin-bottom: 6px;" onclick="routeDirectionStopClicked(' + route + ', ' + direction + ', &quot;' + arr[i].Value + '&quot;, &quot;' + arr[i].Text + '&quot;)" >' + arr[i].Text + '</button>';
-	}
-    out += "</div>";
+	const arr = JSON.parse(responseText);
+	const outDiv = document.createElement("div");
+	outDiv.setAttribute("id", "routeDirectionStopButtonGroup");
 
-	var id00Route = document.getElementById("id00RouteDirectionStop");
-    id00Route.innerHTML = out;
+	for(var i = 0; i< arr.length; i++) {
+		const outButton = document.createElement("button");
+		outButton.setAttribute("type", "button");
+		outButton.setAttribute("class", "btn btn-primary mr-1 mb-1");
+		console.log("routeDirectionStopClicked(" + route + ", " + direction + ", '" + arr[i].Value + "', '" + arr[i].Text + "')");
+		outButton.setAttribute("onclick", "routeDirectionStopClicked(" + route + ", " + direction + ", '" + arr[i].Value + "', '" + arr[i].Text + "')");
+		outButton.textContent = arr[i].Text;
+		outDiv.appendChild(outButton);
+	}
+
+	const id00Route = document.getElementById("id00RouteDirectionStop");
+	dropElementChildren(id00Route);
+
+	id00Route.appendChild(outDiv);
 	id00Route.style.display = "block";
 	$("#selectStopButton").addClass("active");	
 }
@@ -996,14 +1101,19 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 	_myDirection = direction;
 	
 	if(_myStop === undefined || _myStop === null || _myStop !== stop) {
-		document.getElementById('selectedStop').innerHTML = '&nbsp;&nbsp;' + stopDescription + '&nbsp;&nbsp;&nbsp;';
+		var a = document.getElementById("selectedStop");
+		a.textContent = ": " + stopDescription;
+		a.setAttribute("style", "ml-2 mr-3");
 	}
+
 	_myStop = stop;
+
 	if(_isDebugging) {
 		console.log("routeDirectionStop()  myRoute=" + _myRoute 
 			+ "  myDirection=" + _myDirection
 			+ "  myStop=" + _myStop);
 	}
+
 	// open the details section
 	document.getElementById("collapseDetails").classList.add("show");
 	document.getElementById("collapseBusStop").classList.remove("show");
@@ -1028,6 +1138,18 @@ function getDepartures(route, direction, stop) {
 	xmlhttp6.send();
 }
 
+function populateHeaderRow(row, values) {
+	//	const outTableRow = document.createElement("tr");
+	//  usage:    const values = ["Actual", "Route", "Departs", "Banner", "Milestone", "Miles"]
+	//            const row = document.createElement("tr");
+	//			  populateRow(row, true, values);
+	for (var i = 0; i < values.length; i++) {
+		const th = document.createElement("th");
+		th.textContent = values[i];
+		row.appendChild(th);
+	}
+}
+
 function populateDepartures(route, direction, stop, responseText) {
 	var busAtPoint;
 	var milesAway;
@@ -1045,8 +1167,16 @@ function populateDepartures(route, direction, stop, responseText) {
 	}
 
 	_isCurrentTargetANumberedBusStop = false;
+
+	var outDiv = document.createElement("div");
+	const outTable = document.createElement("table");
+	outTable.setAttribute("class", "table table-sm table-responsive-sm table-bordered");
 	
-	var out = '<div><table class="table table-sm table-responsive-sm table-bordered"><tr><th>Actual</th><th>Route</th><th>Departs</th><th>Banner</th><th>Milestone</th><th>Miles</th></tr>';
+	var outTableRow = document.createElement("tr");
+	var values = ["Actual", "Route", "Departs", "Banner", "Milestone", "Miles"]
+	var outTd;
+	populateHeaderRow(outTableRow, values);
+	outTable.appendChild(outTableRow);
 	
 	// a tracked bus number, could disappear from these results, even though it has not reached the stop
 	//     need to detect that the tracked bus number is not in the results
@@ -1062,7 +1192,7 @@ function populateDepartures(route, direction, stop, responseText) {
 		shouldShowTrackedBus = !hasBlockNumberMatch;
 		
 		if(shouldShowTrackedBus) {
-			// need to be able to add based on a saved row, 
+			// add based on a saved row, 
 			if(Modernizr.localstorage) {
 				var p = _tblVehicleTracked.getByKey(_myBlockNumber.toString());
 				if(p !== undefined && p !== null) {
@@ -1083,18 +1213,40 @@ function populateDepartures(route, direction, stop, responseText) {
 						}
 					}
 
-					out += '<tr><td id="Actual_' + route.toString() + '_' + pI.BlockNumber.toString() + '" class="bg-success" >' +	pI.Actual +	'</td><td>' +
+					outTableRow = document.createElement("tr");
+					// 	["Actual"
+					outTd = document.createElement("td");
+					outTd.setAttribute("id", "Actual_" + route.toString() + "_" + pI.BlockNumber.toString());
+					outTd.setAttribute("class", "bg-success");
+					outTd.textContent = pI.Actual;					
+					outTableRow.appendChild(outTd);
 
-					pI.Route + pI.Terminal +
-					"</td><td>" +
-					" - - " + /* pI.DepartureText + */
-					"</td><td>" +
-					pI.Description +
-					"</td><td>" +
-					(pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ) ? "&nbsp;" : passedMilestone(pI).simple +
-					"</td><td>" +
-					(milesAndDirectionLetter !== "" ? milesAndDirectionLetter : pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ? "&nbsp;" : distanceInMiles3Digits(pI)) +
-					"</td></tr>";
+					// 	[.. , "Route", ..]
+					outTd = document.createElement("td");
+					outTd.textContent = pI.Route + pI.Terminal;					
+					outTableRow.appendChild(outTd);
+
+					// 	[.. , "Departs", ..]
+					outTd = document.createElement("td");
+					outTd.textContent = " - - ";					
+					outTableRow.appendChild(outTd);
+
+					// 	[.. , "Banner", ..]
+					outTd = document.createElement("td");
+					outTd.textContent = pI.Description;
+					outTableRow.appendChild(outTd);
+
+					// 	[.. , "Milestone", ..]
+					outTd = document.createElement("td");
+					outTd.textContent = (pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ) ? "&nbsp;" : passedMilestone(pI).simple;
+					outTableRow.appendChild(outTd);
+
+					// 	[.. , "Miles"]
+					outTd = document.createElement("td");
+					outTd.textContent =	(milesAndDirectionLetter !== "" ? milesAndDirectionLetter : pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ? "&nbsp;" : distanceInMiles3Digits(pI));
+					outTableRow.appendChild(outTd);
+
+					outTable.appendChild(outTableRow);
 				}
 			}
 		}
@@ -1113,7 +1265,6 @@ function populateDepartures(route, direction, stop, responseText) {
 			actualBlockNumber = arr[i].BlockNumber;
 		}
 
-		// copied from elsewhere
 		milesAndDirectionLetter = "";
 		if(targetPoint !== undefined && targetPoint !== null && arr[i] !== undefined && arr[i].VehicleLatitude !== undefined && arr[i].VehicleLatitude !== 0) {
 			busAtPoint = {"latitude": arr[i].VehicleLatitude, "longitude": arr[i].VehicleLongitude};
@@ -1121,39 +1272,41 @@ function populateDepartures(route, direction, stop, responseText) {
 			milesAndDirectionLetter = milesAndDirection(milesAway);
 		}
 
-		out += '<tr>';
+		outTableRow = document.createElement("tr");
+		outTd = document.createElement("td");
 
-		out += 
-		arr[i].Actual === undefined || arr[i].Actual === null || !arr[i].Actual ? '<td>&nbsp;</td>' : '<td id="Actual_' + route.toString() + '_' + arr[i].BlockNumber.toString() + '" class="bg-success" >' + arr[i].Actual + '</td>';
+		if(arr[i].Actual === undefined || arr[i].Actual === null || !arr[i].Actual) {
+			outTd.textContent = ""; // &nbsp;?
+		} else {
+			outTd.setAttribute("id", "Actual_" + route.toString() + "_" + arr[i].BlockNumber.toString());
+			outTd.setAttribute("class", "bg-success");
+			outTd.textContent = arr[i].Actual;
+		}
 
-		out +=
-		'<td>' +
-		arr[i].Route + arr[i].Terminal +
-		"</td><td>" +
-		arr[i].DepartureText +
-		"</td><td>" +
-		arr[i].Description +
-		"</td><td>";
+		outTableRow.appendChild(outTd);
+
+		outTd = document.createElement("td");
+		outTd.textContent = arr[i].Route + arr[i].Terminal;					
+		outTableRow.appendChild(outTd);
 		
-//		if(isDebugging) {
-//			console.log("out=" + out);
-//		}
+		outTd = document.createElement("td");
+		outTd.textContent = arr[i].DepartureText;					
+		outTableRow.appendChild(outTd);
 
-		out +=
-		arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "&nbsp;" : passedMilestone(arr[i]).simple +
-		"</td><td>";
-		
-		out +=
-		milesAndDirectionLetter !== "" ? milesAndDirectionLetter : arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "&nbsp;" : distanceInMiles3Digits(arr[i]);
+		outTd = document.createElement("td");
+		outTd.textContent = arr[i].Description;					
+		outTableRow.appendChild(outTd);
 
-		out += "</td></tr>";
-		
-//		if(isDebugging) {
-//			console.log("line 900 out=" + out);
-//		}
+		outTd = document.createElement("td");
+		outTd.textContent = arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "" : passedMilestone(arr[i]).simple;					
+		outTableRow.appendChild(outTd);
+
+		outTd = document.createElement("td");
+		outTd.textContent = milesAndDirectionLetter !== "" ? milesAndDirectionLetter : arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "" : distanceInMiles3Digits(arr[i]);					
+		outTableRow.appendChild(outTd);
+
+		outTable.appendChild(outTableRow);
 	}
-	out += "</table></div>";
-	// console.log("out=" + out);
 	
 	if(isValid) {
 		// do not save until it is known to be a valid response
@@ -1188,27 +1341,45 @@ function populateDepartures(route, direction, stop, responseText) {
 					_db1.setByKey("ActiveScheduledBusStop", JSON.stringify(busStopPoint));
 				}
 			}
-			// rotateRecentRoutes();
 			rotateRecentChoices(newVal);
 		}
 		resetRecentChoiceButtons();
 		document.getElementById("id00RouteDirectionStop").style.display = "none";
 	}
 
-    document.getElementById("title1").innerHTML = "Bus Schedule " + route.toString();
+    document.getElementById("title1").textContent = "Bus Schedule " + route.toString();
 	if(_isDebugging) {
-		console.log("out=" + out);
+		console.log("outTable=" + JSON.stringify(outTable));
 	}
 	
-    document.getElementById("id00B").innerHTML = out;
+	var elementid00B = document.getElementById("id00B");
+	outTable.setAttribute("id", "id00B");
+	elementid00B.parentNode.replaceChild(outTable, elementid00B);
+
+	outDiv = document.createElement("div");
+
+	var outButton = document.createElement("button");
+	outButton.setAttribute("type", "button");
+	outButton.setAttribute("class", "btn btn-primary");
+	outButton.setAttribute("onclick", "getDepartures(" + route.toString() + ", " + direction + ", '" + stop + "');");
+	outButton.textContent = route.toString() + ' - ' + directionAsString(direction) + ' - ' + stop;
+	outDiv.appendChild(outButton);	
 	
-	var outButton = '<button type="button" class="btn btn-primary" onclick="getDepartures(' + route.toString() + ', ' + direction + ', \'' + stop + '\');" >' + route.toString() + ' - ' + directionAsString(direction) + ' - ' + stop + '</button>';
-	
-	var timeOfQuery = new Date();
-	outButton += '<label>&nbsp;&nbsp;' + getStopDescription(route, direction, stop) + '</label><label>&nbsp;&nbsp;' + timeOfQuery.toHHMMSS() + '</label>';
-	
-    document.getElementById("id00C").innerHTML = outButton;
-	
+	var outLabel = document.createElement("label");
+	outLabel.setAttribute("class", "ml-1 mr-3");
+	outLabel.textContent = getStopDescription(route, direction, stop);
+	outDiv.appendChild(outLabel);
+
+	const timeOfQuery = new Date();
+	outLabel = document.createElement("label");
+	outLabel.setAttribute("class", "ml-1 mr-3");
+	outLabel.textContent = timeOfQuery.toHHMMSS();
+	outDiv.appendChild(outLabel);
+
+	var elementid00C = document.getElementById("id00C");
+	outDiv.setAttribute("id", "id00C");
+	elementid00C.parentNode.replaceChild(outDiv, elementid00C);
+
 	if(hasActuals) {
 		showBusLocation2(route, actualBlockNumber);
 	}
@@ -1653,7 +1824,7 @@ function getGps() {  // eslint-disable-line no-unused-vars
 	}
 
 	if (!navigator.geolocation) {
-		output.innerHTML = '<p class="text-danger">Geolocation is not supported by your browser</p>';
+		popupModal("Geolocation is not supported by your browser");
 		return;
 	}
 
@@ -1672,7 +1843,8 @@ function getGps() {  // eslint-disable-line no-unused-vars
 	}
 
 	function error() {
-		output.innerHTML = '<span class="text-danger">Unable to retrieve your location</span>';
+		popupModal("Unable to retrieve your location.");
+		return;
 	}
 
 	var options = {
@@ -1681,7 +1853,7 @@ function getGps() {  // eslint-disable-line no-unused-vars
 		maximumAge: 30000     // milliseconds old or less, retrieve from cache.  0 to always get the latest position, never from cache
 	};
 
-	output.innerHTML = '<span class="text-default">Locating . . . </span>';
+	// output.innerHTML = '<span class="text-default">Locating . . . </span>';
 
 	navigator.geolocation.getCurrentPosition(success, error, options);
 }
