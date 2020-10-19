@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201018_1432";
+const _version = "20201019_1713";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -270,8 +270,6 @@ function savePastChoice(recentChoice) {
 				if(!isScheduledStop && pastChoicesArray[i].numberedStop !== undefined) {
 					// is a Numbered Stop like: {"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"}
 					if(recentChoice.stopNumber === pastChoicesArray[i].numberedStop.stopNumber &&
-	//				   recentChoice.latitude == pastChoicesArray[i].numberedStop.latitude &&
-	//				   recentChoice.longitude == pastChoicesArray[i].numberedStop.longitude &&
 						recentChoice.description === pastChoicesArray[i].numberedStop.description &&
 						recentChoice.routeFilter === pastChoicesArray[i].numberedStop.routeFilter) {
 							//
@@ -450,7 +448,6 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 	var busStopPoint = {"stopNumber":enteredStopNumber.stopNumber, "latitude": latitude, "longitude": longitude, "description": description, "routeFilter":enteredStopNumber.routeFilter};
 	_db1.setByKey("ActiveNumberedBusStop", JSON.stringify(busStopPoint));
 	
-	// rotateRecentNumberedStops();
 	rotateRecentChoices(busStopPoint);
 	resetRecentChoiceButtons();
 }
@@ -691,7 +688,6 @@ function rewriteActualTableData(route, blockNumber) {
 	else {
 		s1 = (secondsElapsed/60).toFixed(1) + " min ago";
 	}
-//	s += "<br>";
 
 	// ScheduledStop info
 	var busAtPoint = {"latitude": busLastAt.latitude, "longitude": busLastAt.longitude};
@@ -727,9 +723,8 @@ function rewriteActualTableData(route, blockNumber) {
 
 	var milesAway = miles(busAtPoint, busStopPoint);
 	var s2 = milesAndDirection(milesAway);
-	// var s3 = markupBlockNumberButton(blockNumber);
-	
 	var actualRouteBlockNumber = document.getElementById("Actual_" + route.toString() + "_" + blockNumber.toString());
+
 	if(actualRouteBlockNumber !== undefined && actualRouteBlockNumber !== null) {
 		const newDiv = document.createElement("div");
 		newDiv.setAttribute("id", "firstCellOfDetails");
@@ -759,7 +754,12 @@ function markupBlockNumberButton(blockNumber) {
 	if(_isDebugging) {
 		console.log("markupBlockNumberButton(" + blockNumber.toString() + ") which creates a button busNumberClicked(" + blockNumber.toString() +")");
 	}
-	return '<button type="button" class="btn btn-primary btn-sm" onclick="busNumberClicked(' + blockNumber.toString() + ')" >' + blockNumber.toString() + '</button>';
+	var outButton = document.createElement("button");
+	outButton.setAttribute("type", "button");
+	outButton.setAttribute("class", "btn btn-primary btn-sm")
+	outButton.setAttribute("onclick", "busNumberClicked(" + blockNumber.toString() + ")");
+	outButton.textContent = blockNumber.toString();
+	return outButton;
 }
 
 // like:   "\/Date(1447715700000-0600)\/"
@@ -844,8 +844,6 @@ function busNumberClicked2(blockNumber, routeNumber) {
 		if(targetStop !== undefined && targetStop !== null) {
 			_myBlockNumber = blockNumber;
 			_myStop = null;
-//			document.getElementById("collapseMap").classList.add("show");			
-//			initializeMap2(targetStop);
 		}
 	}
 
@@ -1238,12 +1236,12 @@ function populateDepartures(route, direction, stop, responseText) {
 
 					// 	[.. , "Milestone", ..]
 					outTd = document.createElement("td");
-					outTd.textContent = (pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ) ? "&nbsp;" : passedMilestone(pI).simple;
+					outTd.textContent = (pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ) ? " " : passedMilestone(pI).simple;
 					outTableRow.appendChild(outTd);
 
 					// 	[.. , "Miles"]
 					outTd = document.createElement("td");
-					outTd.textContent =	(milesAndDirectionLetter !== "" ? milesAndDirectionLetter : pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ? "&nbsp;" : distanceInMiles3Digits(pI));
+					outTd.textContent =	(milesAndDirectionLetter !== "" ? milesAndDirectionLetter : pI.VehicleLatitude === undefined || pI.VehicleLatitude === null || pI.VehicleLatitude === "0" ? " " : distanceInMiles3Digits(pI));
 					outTableRow.appendChild(outTd);
 
 					outTable.appendChild(outTableRow);
@@ -1565,7 +1563,7 @@ function passedMilestone(arrRow) {
 		var milesSWofWashington300S = miles(busAtPoint, _SWofWashington300S);
 		if(isNorthAndEastOf(milesSWofWashington300S, 0.2)) {
 			return {detail: "NE of 3rd and Washington" + " :" + milesAsString(milesSWofWashington300S),
-					simple: milesAndDirection(milesSWofWashington300S) + " of 3rd &amp; Wash"};
+					simple: milesAndDirection(milesSWofWashington300S) + " of 3rd & Wash"};
 		}
 
 		var milesSouthAndWestOfGatewayRamp = miles(busAtPoint, _SouthAndWestOfGatewayRamp);
@@ -1577,11 +1575,11 @@ function passedMilestone(arrRow) {
 		var milesWashington300S = miles(busAtPoint, _Washington300S);
 		if(milesWashington300S.isNorthOf && milesWashington300S.isEastOf && milesWashington300S.between < 0.2) {
 			return {detail: "East of 3rd and Washington" + milesAsString(milesWashington300S),
-					simple: milesAndDirection(milesWashington300S) + " of 3rd &amp; Wash"};
+					simple: milesAndDirection(milesWashington300S) + " of 3rd & Wash"};
 		}
 		if(milesWashington300S.isNorthOf && milesWashington300S.isWestOf && milesWashington300S.between < 0.2) {
 			return {detail: "Crossed 3rd and Washington" + milesAsString(milesWashington300S),
-					simple: milesAndDirection(milesWashington300S) + " crossed 3rd &amp; Wash"};
+					simple: milesAndDirection(milesWashington300S) + " crossed 3rd & Wash"};
 		}
 		
 		var milesGrantAnd35W = miles(busAtPoint, _GrantAnd35W);
@@ -1603,7 +1601,7 @@ function passedMilestone(arrRow) {
 					simple: milesAndDirection(miles400SMarquette) + " from Stop"};
 			}
 		if(distanceFrom400SMarquette <= 0.0169) {
-			return {detail: "35W &amp; Franklin",
+			return {detail: "35W & Franklin",
 					simple: milesAndDirection(miles400SMarquette) + " near 35W &amp Franklin"};
 		}
 		if(distanceFrom400SMarquette <= 1 && distanceFrom5thAndWashington <= 0.2) {
@@ -1621,19 +1619,19 @@ function passedMilestone(arrRow) {
 		var milesBroadwayEmerson = miles(busAtPoint, +_BroadwayEmerson);
 		if(milesBroadwayEmerson.isWestOf) {
 			return {detail: "West of Broadway Emerson" + " :" + milesAsString(milesBroadwayEmerson),
-					simple: milesAndDirection(milesBroadwayEmerson) + " of Broadway &amp; Emerson"};
+					simple: milesAndDirection(milesBroadwayEmerson) + " of Broadway & Emerson"};
 		}
 
 		var milesPlymouthWashington = miles(busAtPoint, _PlymouthWashington);
 		if(milesPlymouthWashington.east < 0.1 && milesPlymouthWashington.north > -0.1 ) {
 			return {detail: "West of Plymouth and Washington" + " :" + milesAsString(milesPlymouthWashington), 
-					simple: milesAndDirection(milesPlymouthWashington) + " of Plymouth &amp; Wash"};
+					simple: milesAndDirection(milesPlymouthWashington) + " of Plymouth & Wash"};
 		}
 
 		var milesWashington300N = miles(busAtPoint, _Washington300N);
 		if(milesWashington300N.isWestOf && milesWashington300N.isNorthOf && milesWashington300N.between < 1) {
 			return {detail: "NW of 3rd Ave N and Washington" + " :" + milesAsString(milesWashington300N),
-					simple: milesAndDirection(milesWashington300N) + " of 3rd Ave N &amp; Wash"};
+					simple: milesAndDirection(milesWashington300N) + " of 3rd Ave N & Wash"};
 		}
 		
 		var milesFifthStBusRamp = miles(busAtPoint, _FifthStBusRamp);
@@ -1645,7 +1643,7 @@ function passedMilestone(arrRow) {
 		var milesFromSixthNicollet = miles(busAtPoint, _SixthNicollet);
 		if(milesFifthStBusRamp.isSouthOf && milesFifthStBusRamp.isEastOf && milesFromSixthNicollet.isNorthOf && milesFromSixthNicollet.isWestOf && milesFromSixthNicollet.between > 0.05) {
 			return {detail: "Nearing Nicollet Mall" + " :" + milesAsString(milesFromSixthNicollet),
-					simple: milesAndDirection(milesFromSixthNicollet) + " of 6th &amp; Nicollet"};
+					simple: milesAndDirection(milesFromSixthNicollet) + " of 6th & Nicollet"};
 		}			
 
 		if(milesFromSixthNicollet.isNorthOf && milesFromSixthNicollet.between < 0.05) {
@@ -1853,8 +1851,6 @@ function getGps() {  // eslint-disable-line no-unused-vars
 		maximumAge: 30000     // milliseconds old or less, retrieve from cache.  0 to always get the latest position, never from cache
 	};
 
-	// output.innerHTML = '<span class="text-default">Locating . . . </span>';
-
 	navigator.geolocation.getCurrentPosition(success, error, options);
 }
 // --------------------------------------------
@@ -1899,10 +1895,13 @@ function addBlockButtonToMapTitle() {
 		console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + _myBlockNumber.toString());
 	}
 	var divInTitle = document.getElementsByClassName("map-title");
-	var markup = markupBlockNumberButton(_myBlockNumber);
-	markup = markup.replace(' onclick', ' style="margin-left: 30%; margin-right: 20%" onclick');
-	markup = markup.replace('button type=', 'button id="busNumberMapButton" type=');
-	divInTitle[0].innerHTML = markup;
+	
+	var outButton = markupBlockNumberButton(_myBlockNumber);
+	outButton.setAttribute("style", "margin-left: 30%; margin-right: 20%");
+	outButton.setAttribute("id", "busNumberMapButton");
+
+	dropElementChildren(divInTitle[0]);
+	divInTitle[0].appendChild(outButton);
 }
 
 function addResetButtonToMapTitle() {
@@ -1911,8 +1910,12 @@ function addResetButtonToMapTitle() {
 	if(mapTitleResetButton === null) {
 		var divInTitle = document.getElementsByClassName("map-title");
 		if(divInTitle !== undefined) {
-			divInTitle[0].innerHTML = divInTitle[0].innerHTML + 
-				'<button type="button" class="btn btn-primary btn-sm float-right" onclick="clearTracking()">Reset Map</button>';
+			var outButton = document.createElement("button");
+			outButton.setAttribute("type", "button");
+			outButton.setAttribute("class", "btn btn-primary btn-sm float-right");
+			outButton.setAttribute("onclick", "clearTracking();");
+			outButton.textContent = "Reset Map";
+			divInTitle[0].appendChild(outButton);
 		}
 	}
 }
@@ -2053,11 +2056,9 @@ function clearPastChoicesOfNow() {   // eslint-disable-line no-unused-vars
 		console.debug("clearPastChoicesOfNow() starting.");
 	}
 	
-// 	var pastChoices = tblPastChoices.getByKey(pastChoicesKey);
 	if(_tblPastChoices !== undefined && _tblPastChoices !== null) {
-		// if(pastChoices !== undefined && pastChoices !== null)
-			var pastChoicesKey = getCurrentPastChoicesKey();
-			_tblPastChoices.removeByKey(pastChoicesKey);
+		var pastChoicesKey = getCurrentPastChoicesKey();
+		_tblPastChoices.removeByKey(pastChoicesKey);
 	}
 
 	if(_isDebugging) {
@@ -2089,7 +2090,8 @@ function clearTracking() {   // eslint-disable-line no-unused-vars
 		console.debug("clearTracking() starting.");
 	}
 	
-	document.getElementById("map_canvas").innerHTML = "";
+	dropElementChildren(document.getElementById("map_canvas"));
+
 	if(markers !== undefined && markers !== null) {
 		for (var i = 0; i < markers.length; i++) {
 			if(_isDebugging) {
@@ -2156,7 +2158,6 @@ function selectRecentChoice(i) { // eslint-disable-line no-unused-vars
 			}
 			if(parsedRecentChoice.stopNumber !== undefined) {
 				isShouldSavePastChoice = true;
-				// msg = parsedRecentChoice.stopNumber;
 				isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 				showStop2(parsedRecentChoice);
 				return true;
@@ -2202,7 +2203,7 @@ function resetRecentChoiceButtons() {
 			var child = document.createElement("span");
 			child.setAttribute("id", "recentChoice" + i.toString());
 			child.setAttribute("class", "active hidden btn-group");
-			child.textContent = "&nbsp;";
+			child.textContent = "";
 			parentOfRecentChoice.appendChild(child);
 			recentIElement = document.getElementById("recentChoice" + i.toString()); 
 		}
@@ -2212,13 +2213,12 @@ function resetRecentChoiceButtons() {
 		if(recentValue === undefined || recentValue === null || recentValue === "undefined") {
 			recentIElement.hidden = true;
 			recentIElement.classList.add("hidden");
-			recentIElement.innerHTML = '&nbsp;';			
+			recentIElement.textContent = "";
 		} else {
 			recentIElement.hidden = false;
 			recentIElement.classList.remove("hidden");
 			var parsedRecentChoice = JSON.parse(recentValue);
 			// could be a numbered or scheduled stop
-			// var recentBusStopNumber = JSON.parse(recentValue);
 			var buttonText = 'unknown';
 			if(parsedRecentChoice.stopNumber !== undefined) {
 				buttonText = parsedRecentChoice.stopNumber 
@@ -2229,13 +2229,21 @@ function resetRecentChoiceButtons() {
 			if(parsedRecentChoice.stop !== undefined) {
 				buttonText = parsedRecentChoice.route + ' - ' + directionAsString(parsedRecentChoice.direction) + ' - ' + parsedRecentChoice.stop;
 			}
-			// let idTemp = 'recentChoice' + i;
-			// var out = '<div id="' + idTemp + '" class="active input-group" >'
-			var out = '<button class="active btn btn-secondary"                 type="button" onclick="selectRecentChoice(' + i + ');" >' 
-					+ buttonText
-					+ '</button>'
-					+ '<button class="active btn btn-danger input-group-append" type="button" onclick="deleteRecentChoice(' + i + ');">X</button>';
-			recentIElement.innerHTML = out;			
+			var outButton = document.createElement("button");
+			outButton.setAttribute("class", "active btn btn-secondary");
+			outButton.setAttribute("type", "button");
+			outButton.setAttribute("onclick", "selectRecentChoice(" + i + ");");
+			outButton.textContent = buttonText;
+
+			var outXButton = document.createElement("button");
+			outXButton.setAttribute("class", "active btn btn-danger input-group-append");
+			outXButton.setAttribute("type", "button");
+			outXButton.setAttribute("onclick", "deleteRecentChoice(" + i + ");");
+			outXButton.textContent = "X";
+
+			dropElementChildren(recentIElement);
+			recentIElement.appendChild(outButton);
+			recentIElement.appendChild(outXButton);		
 		}
 	}
 }
@@ -2278,12 +2286,10 @@ function rotateRecentChoices(recent) {
 				if(isScheduledStop && recent.stop === choiceI.stop) {
 					matchedChoice = choiceI;
 					matchIndex = i;
-					// isAlreadyInTheList = true;
 				}
 				if(!isScheduledStop && recent.stopNumber === choiceI.stopNumber && recent.routeFilter === choiceI.routeFilter) {
 					matchedChoice = choiceI;
 					matchIndex = i;
-					// isAlreadyInTheList = true;
 				}
 			}
 		}
@@ -2482,7 +2488,11 @@ function popupModal(message) {     // eslint-disable-line no-unused-vars
 	}
 
 	var idPopupModalBody = document.getElementById("idPopupModalBody");
-	idPopupModalBody.innerHTML = '<p>' + message + '</p>';
+	var outParagraph = document.createElement("p");
+	outParagraph.textContent = message;
+
+	dropElementChildren(idPopupModalBody);
+	idPopupModalBody.appendChild(outParagraph);
 	idPopupModalBody.style.display = "block";
 
 	modalElement.style.display = "block";
@@ -2525,10 +2535,24 @@ function showPastChoices() {   // eslint-disable-line no-unused-vars
 	// build a table from tblPastChoices
 	//          Day of week, Hour, Choice Button text, Count
 	// 
-	var out = '<div id="idPastChoicesTable">';
-	out += '  <table class="table table-striped table-sm"><thead><tr><th>Day</th><th>Hour</th><th>Stop</th><th>Count</th></tr></thead>';
-	out += '    <tbody>';
-	
+	var outDiv = document.createElement("div");
+	outDiv.setAttribute("id", "idPastChoicesTable");
+
+	var outTable = document.createElement("table");
+	outTable.setAttribute("class", "table table-striped table-sm");
+	outDiv.appendChild(outTable);
+
+	var outTHead = document.createElement("thead");
+	outTable.appendChild(outTHead);
+
+	var outTR = document.createElement("tr");
+	outTHead.appendChild(outTR);
+
+	populateHeaderRow(outTR, ["Day", "Hour", "Stop", "Count"]);
+
+	var outBody = document.createElement("tbody");
+	outTable.appendChild(outBody);
+
 	var iDay = 0;
 	var iHour = 0;
 	var pastChoicesKey = iDay.toString()+','+iHour.toString();
@@ -2551,12 +2575,25 @@ function showPastChoices() {   // eslint-disable-line no-unused-vars
 
 					if(pastChoicesArray[i].scheduledStop !== undefined) {
 						// handle the button text of a scheduled stop
-						out += '<tr><td>' + dayOfWeekAsMinimumString(iDay) 
-							+ '</td><td>' + hourOfDayAsMinimumString(iHour) 
-							+ '</td><td>' + pastChoicesArray[i].scheduledStop.route.toString() + ' - ' + directionAsString(pastChoicesArray[i].scheduledStop.direction) + ' - ' + pastChoicesArray[i].scheduledStop.stop 
-							+ '</td><td>' + pastChoicesArray[i].count.toString() 
-							+ '</td></tr>';
-						
+						var outTR = document.createElement("tr");
+						outBody.appendChild(outTR);
+
+						var outTd = document.createElement("td");
+						outTd.textContent = dayOfWeekAsMinimumString(iDay);
+						outTR.appendChild(outTd);
+
+						outTd = document.createElement("td");
+						outTd.textContent = hourOfDayAsMinimumString(iHour);
+						outTR.appendChild(outTd);
+
+						outTd = document.createElement("td");
+						outTd.textContent = pastChoicesArray[i].scheduledStop.route.toString() + ' - ' + directionAsString(pastChoicesArray[i].scheduledStop.direction) + ' - ' + pastChoicesArray[i].scheduledStop.stop ;
+						outTR.appendChild(outTd);
+
+						outTd = document.createElement("td");
+						outTd.textContent = pastChoicesArray[i].count.toString();
+						outTR.appendChild(outTd);
+
 					} else {
 						if(pastChoicesArray[i].numberedStop !== undefined) {
 							// handle the button text of a numbered stop
@@ -2568,12 +2605,25 @@ function showPastChoices() {   // eslint-disable-line no-unused-vars
 							if(pastChoicesArray[i].numberedStop.routeFilter !== undefined && pastChoicesArray[i].numberedStop.routeFilter !== null) {
 								buttonText += ' ' + pastChoicesArray[i].numberedStop.routeFilter;
 							}
-							
-							out += '<tr><td>' + dayOfWeekAsMinimumString(iDay) 
-								+ '</td><td>' + hourOfDayAsMinimumString(iHour) 
-								+ '</td><td>' + buttonText 
-								+ '</td><td>' + pastChoicesArray[i].count.toString() 
-								+ '</td></tr>';
+
+							var outTR = document.createElement("tr");
+							outBody.appendChild(outTR);
+	
+							var outTd = document.createElement("td");
+							outTd.textContent = dayOfWeekAsMinimumString(iDay);
+							outTR.appendChild(outTd);
+								
+							outTd = document.createElement("td");
+							outTd.textContent = hourOfDayAsMinimumString(iHour);
+							outTR.appendChild(outTd);
+
+							outTd = document.createElement("td");
+							outTd.textContent = buttonText;
+							outTR.appendChild(outTd);
+
+							outTd = document.createElement("td");
+							outTd.textContent = pastChoicesArray[i].count.toString() ;
+							outTR.appendChild(outTd);
 						}
 					}
 				}
@@ -2581,10 +2631,10 @@ function showPastChoices() {   // eslint-disable-line no-unused-vars
 		}
 	}
 
-	out += "</tbody></table></div>";
-
 	var idPastChoicesTable = document.getElementById("idPastChoicesTable");
-	idPastChoicesTable.innerHTML = out;
+	dropElementChildren(idPastChoicesTable);
+	idPastChoicesTable.appendChild(outDiv);
+
 	idPastChoicesTable.style.display = "block";
 
 	_modal.style.display = "block";
@@ -2627,7 +2677,6 @@ _selectRouteButton.addEventListener("long-press", function(e) {
 	popupModal("Routes cleared to allow reloading.");
 });
 
-// <span id="selectStopButton"         class="btn btn-secondary" onclick="selectRouteDirectionStopsUsingMyDirection()">Stop</span>
 var _selectStopButton = document.getElementById("selectStopButton");
 
 // listen for the long-press event
