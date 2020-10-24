@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201019_1713";
+const _version = "20201024_1548";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -17,7 +17,6 @@ Problems:
 	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
 	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
 	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.
-	2020-10-06   remove the use of innerHTML
 */
 
 // ----------------------------------------------------------------------- start
@@ -214,7 +213,7 @@ function getCurrentPastChoicesKey(dDay, dHour) {
 }
 
 function savePastChoice(recentChoice) {
-	if(isShouldSavePastChoice === undefined || isShouldSavePastChoice === null || !isShouldSavePastChoice) {
+	if(_isShouldSavePastChoice === undefined || _isShouldSavePastChoice === null || !_isShouldSavePastChoice) {
 		if(_isDebugging) {
 			console.log("savePastChoice is skipped because isShouldSavePastChoice is not true.");
 		}
@@ -439,7 +438,7 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 	// stop_id  stop_lat   stop_lon   stop_name
 	// 15574    44.912369  -93.252335 Bloomington Ave S & 50th St E
 	// 	setDbValue("o15574","{\"n\":2052,\"e\":9050}");
-    var latitude = 0.0 + offsetForStop.n/10000.0 + 44.707146;
+	var latitude = 0.0 + offsetForStop.n/10000.0 + 44.707146;
 	var longitude = 0.0 + offsetForStop.e/10000.0 - 94.157372;
 	
 	// ActiveNumberedBusStop needs to include the description from the BusStopNumberEntered
@@ -656,7 +655,7 @@ function populateVehicleLocations2(route, blockNumber, responseText) {
 	}
 }
 
-var secondsElapsedOffset = 0;
+var _secondsElapsedOffset = 0;
 function rewriteActualTableData(route, blockNumber) {
 	// nn sec ago:  (up to 100)   n.n min ago:  (up to 5 minutes)
 	// miles & direction
@@ -673,13 +672,13 @@ function rewriteActualTableData(route, blockNumber) {
 	// secondsElapsed should never be less than 0
 	//                is an indication that the local clock and the Server clock differ
 	//                need to save an offset value.
-	if(secondsElapsed < 0 && secondsElapsedOffset < 60) {
-		secondsElapsedOffset = -secondsElapsed + secondsElapsedOffset;
+	if(secondsElapsed < 0 && _secondsElapsedOffset < 60) {
+		_secondsElapsedOffset = -secondsElapsed + _secondsElapsedOffset;
 		if(_isDebugging) {
-			console.log("secondsElapsedOffset=" + secondsElapsedOffset + " adjusted");
+			console.log("secondsElapsedOffset=" + _secondsElapsedOffset + " adjusted");
 		}
 	}
-	secondsElapsed = secondsElapsed + secondsElapsedOffset;
+	secondsElapsed = secondsElapsed + _secondsElapsedOffset;
 	
 	var s1 = "";
 	if(0 <= secondsElapsed && secondsElapsed < 100) {
@@ -777,7 +776,7 @@ function fromDateString(str) {
 	return new Date(time);
 }
 
-function selectRoute() {  // eslint-disable-line no-unused-vars
+function selectRoute() {
 	// if we already know the routes, saved to localStorage, use that.
 	if(Modernizr.localstorage) {
 		var p =  _db1.getByKey("Routes"); 
@@ -835,11 +834,10 @@ $('#routeButtonGroup button').on("click", function() {
 	_myRoute = $(this).Value;
 });
 
-// eslint-disable-next-line no-unused-vars
 function busNumberClicked2(blockNumber, routeNumber) {
 	_myRoute = routeNumber;
 	
-	if(map === undefined || map === null) {
+	if(_map === undefined || _map === null) {
 		var targetStop = getActiveNumberedBusStop();
 		if(targetStop !== undefined && targetStop !== null) {
 			_myBlockNumber = blockNumber;
@@ -855,7 +853,7 @@ function busNumberClicked(blockNumber) {
 	var stop;
 	var stopMine;
 	if(_myBlockNumber === blockNumber) {
-		if(map === undefined || map === null) {
+		if(_map === undefined || _map === null) {
 			stop = _tblStop.getByKey(_myStop);
 			if(stop !== undefined && stop !== null) {
 				stopMine = JSON.parse(stop);
@@ -913,7 +911,7 @@ function busNumberClicked(blockNumber) {
 					var newValue = JSON.stringify(arr[i]);	
 					_tblVehicleTracked.setByKey(blockNumber, newValue);
 					
-					if(map === undefined) {
+					if(_map === undefined) {
 						stop = _tblStop.getByKey(_myStop);
 						if(stop !== undefined && stop !== null) {
 							stopMine = JSON.parse(stop);
@@ -926,7 +924,6 @@ function busNumberClicked(blockNumber) {
 	}
 }
 
-// eslint-disable-next-line no-unused-vars
 function routeClicked(route) {
 	if(_myRoute === undefined || _myRoute === null || _myRoute !== route) {
 		$("#selectDirectionButton").removeClass("active");	
@@ -942,7 +939,6 @@ function routeClicked(route) {
 }
 
 // --------------------- RouteDirections
-// eslint-disable-next-line no-unused-vars
 function selectRouteDirectionsUsingMyRoute() {
 	$("#selectStopButton").removeClass("active");	
 	selectRouteDirections2(_myRoute, true, true);
@@ -1015,7 +1011,6 @@ function populateRouteDirections(route, responseText) {
 	$("#selectDirectionButton").addClass("active");	
 }
 
-// eslint-disable-next-line no-unused-vars
 function routeDirectionClicked(route, direction) {
 	if(_myRoute === undefined || _myRoute !== route || _myDirection === undefined || _myDirection !== direction) {
 		$("#selectStopButton").removeClass("active");	
@@ -1034,7 +1029,6 @@ function routeDirectionClicked(route, direction) {
 }
 
 // --------------------- RouteDirectionStops
-// eslint-disable-next-line no-unused-vars
 function selectRouteDirectionStopsUsingMyDirection(){
 	selectRouteDirectionStops2(_myRoute, _myDirection, true);
 }
@@ -1701,7 +1695,7 @@ function getDbSize() {
 	}
 }
 
-function resetDatabase() {   // eslint-disable-line no-unused-vars
+function resetDatabase() {
     if (!_db1.supports_html5_storage) { return null; }
 	localStorage.clear();
 	if(_isDebugging) {
@@ -1709,7 +1703,7 @@ function resetDatabase() {   // eslint-disable-line no-unused-vars
 	}
 }
 
-function showDatabase() {   // eslint-disable-line no-unused-vars
+function showDatabase() {
 	// show SQL that could be used in a query for Stop names of a route
     // BusDB.RouteDirectionStops.133.1	[{"Text":"Gateway Ramp ","Value":"GTWY"},{"Text":"Marquette Ave and 4th St ","Value":"MA4S"},{"Text":"Marquette Ave and 8th St ","Value":"MA8S"},{"Text":"12th St and 3rd Ave ","Value":"123A"},{"Text":"I-35W and Lake St","Value":"I3LA"},{"Text":"38th St and Chicago Ave","Value":"38CH"},{"Text":"Chicago Ave and 46th St","Value":"46CH"},{"Text":"54th St and Bloomington Ave","Value":"BL54"},{"Text":"1000 46th St E ","Value":"1046"}]	
     // BusDB.RouteDirectionStops.133.4	[{"Text":"1000 46th St E ","Value":"1046"},{"Text":"Bloomington Ave and 54th St","Value":"BL54"},{"Text":"Chicago Ave and 46th St","Value":"46CH"},{"Text":"38th St and Chicago Ave","Value":"38CH"},{"Text":"2nd Ave and 11th St ","Value":"112A"},{"Text":"2nd Ave and 7th St ","Value":"7S2A"},{"Text":"2nd Ave and Washington Ave ","Value":"WA2A"}]	
@@ -1731,7 +1725,7 @@ function showDatabase() {   // eslint-disable-line no-unused-vars
 	}
 }
 
-function showDbSize() {   // eslint-disable-line no-unused-vars
+function showDbSize() {
 	var dbSize = getDbSize();
 	if(_isDebugging) {
 		console.log("localStorage size=" + getDbSize());	
@@ -1739,7 +1733,7 @@ function showDbSize() {   // eslint-disable-line no-unused-vars
 	popupModal("localStorage size is " + dbSize);
 }
 
-function removeDbUndefined() {   // eslint-disable-line no-unused-vars
+function removeDbUndefined() {
 	if (!_db1.supports_html5_storage) { return null; }
 	var i = 0;
 	var removedCount = 0;
@@ -1769,7 +1763,7 @@ function removeDbUndefined() {   // eslint-disable-line no-unused-vars
 }
 // -------------------------------- local storage -- end
 
-function visitAllRoutes() {   // eslint-disable-line no-unused-vars
+function visitAllRoutes() {
 	var route;
 	// to populate the local database with values that showDatabase() can use.
     if (!_db1.supports_html5_storage) { 
@@ -1811,9 +1805,9 @@ function visitAllRoutes() {   // eslint-disable-line no-unused-vars
 // and
 // from https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation
 
-var currentDeviceGps;   // .coords of success callback of .getCurrentPosition
+var _currentDeviceGps;   // .coords of success callback of .getCurrentPosition
 
-function getGps() {  // eslint-disable-line no-unused-vars
+function getGps() {
     var output = document.getElementById("mapPanelHeadingLabel");
 	
 	if (output === null) {
@@ -1830,12 +1824,12 @@ function getGps() {  // eslint-disable-line no-unused-vars
 		// var latitude  = position.coords.latitude;
 		// var longitude = position.coords.longitude;
 
-		currentDeviceGps = position.coords;
+		_currentDeviceGps = position.coords;
 
 		console.log('Your current position is:');
-		console.log(`Latitude : ${currentDeviceGps.latitude}`);
-		console.log(`Longitude: ${currentDeviceGps.longitude}`);
-		console.log(`More or less ${currentDeviceGps.accuracy} meters.`);
+		console.log(`Latitude : ${_currentDeviceGps.latitude}`);
+		console.log(`Longitude: ${_currentDeviceGps.longitude}`);
+		console.log(`More or less ${_currentDeviceGps.accuracy} meters.`);
 
 		initializeMap();
 	}
@@ -1858,14 +1852,14 @@ function getGps() {  // eslint-disable-line no-unused-vars
 // ----- create map and add markers ------ start
 // based on http://stackoverflow.com/questions/5319488/how-to-set-google-map-marker-by-latitude-and-longitude-and-provide-infomation-bu
 // fills the <div id="map_canvas"></div>
-var map;
-var markers = [];
+var _map;
+var _markers = [];
 
 function initializeMap() {
 	if(_isDebugging) {
 		console.log("initializeMap() called back.");
 	}	
-	return initializeMap2(currentDeviceGps); 
+	return initializeMap2(_currentDeviceGps); 
 }
 
 function initializeMap2(position) {
@@ -1883,7 +1877,7 @@ function initializeMap2(position) {
 		console.log("Calling google to set the map. myOptions=" + JSON.stringify(myOptions));
 	}
 
-	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+	_map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
 	addMarker(position);
 
 	addBlockButtonToMapTitle();
@@ -1920,7 +1914,7 @@ function addResetButtonToMapTitle() {
 	}
 }
 
-var markerIntervals;
+var _markerIntervals;
 
 function addMarker(busLocation) {
 	var i = 0;
@@ -1928,13 +1922,13 @@ function addMarker(busLocation) {
 		console.log("addMarker(busLocation)  busLocation=" + JSON.stringify(busLocation));
 	}
 	
-	if(markers === undefined || markers === null) {
-		markers = [];
+	if(_markers === undefined || _markers === null) {
+		_markers = [];
 	}
 	
-    for (i = 0; i < markers.length; i++) {
-		if(markers[i].position === undefined || markers[i].position === null) return;
-		if (busLocation.latitude === markers[i].position.lat() && busLocation.longitude === markers[i].position.lng()) return;
+    for (i = 0; i < _markers.length; i++) {
+		if(_markers[i].position === undefined || _markers[i].position === null) return;
+		if (busLocation.latitude === _markers[i].position.lat() && busLocation.longitude === _markers[i].position.lng()) return;
 	}
 	
 	var current = new google.maps.LatLng(busLocation.latitude, busLocation.longitude);
@@ -1946,7 +1940,7 @@ function addMarker(busLocation) {
 	}
 	
 	// if map is null, create one
-	if(map === undefined || map === null) {
+	if(_map === undefined || _map === null) {
 		if(_isDebugging) {
 			console.log("addMarker(busLocation)  map is null.");
 		}
@@ -1965,7 +1959,7 @@ function addMarker(busLocation) {
 			initializeMap2(current);
 		}
 	}	
-	if(map === undefined || map === null) {
+	if(_map === undefined || _map === null) {
 		if(_isDebugging) {
 			console.warn("addMarker(busLocation)  map is still null.  Skipping.");
 		}
@@ -1975,7 +1969,7 @@ function addMarker(busLocation) {
 	var marker;
 	if(busLocation === undefined || busLocation === null || busLocation.time === undefined) {
 		marker = new google.maps.Marker({
-			map: map,
+			map: _map,
 			position: current,
 			icon: {
 				path: google.maps.SymbolPath.CIRCLE,
@@ -1985,7 +1979,7 @@ function addMarker(busLocation) {
 	} else
 	{
 		marker = new google.maps.Marker({
-			map: map,
+			map: _map,
 			position: current,
 			title: "" + busLocation.blockNumber,
 			opacity: 1.0
@@ -2006,28 +2000,28 @@ function addMarker(busLocation) {
 			marker.setMap(null);
 		}, 20 * 60 * 1000);     // 20 minutes
 		
-		if(markerIntervals === undefined || markerIntervals === null) {
-			markerIntervals = [];
+		if(_markerIntervals === undefined || _markerIntervals === null) {
+			_markerIntervals = [];
 		}
-		markerIntervals.push(markerInterval);
+		_markerIntervals.push(markerInterval);
 	} 
-	markers.push(marker);
+	_markers.push(marker);
 
 	// busLocation.time does not exist when the location is actually a bus stop, not a bus location
 	if(busLocation.time !== undefined) {
-		markers[markers.length - 1]['infowin'] = new google.maps.InfoWindow({
+		_markers[_markers.length - 1]['infowin'] = new google.maps.InfoWindow({
 			content: '<div>' + busLocation.time.toHHMMSS().substr(3,2) + 'm' + busLocation.time.toHHMMSS().substr(6,2) + 's</div>'
 				+ '<div>' + busLocation.blockNumber + '</div>'
 		});
 		
-		google.maps.event.addListener(markers[markers.length - 1], 'click', function() {
-			this['infowin'].open(map, this);
+		google.maps.event.addListener(_markers[_markers.length - 1], 'click', function() {
+			this['infowin'].open(_map, this);
 		});
 	}
 }
 // ----- create map and add markers ------ end
 
-function clearRecentChoices() {   // eslint-disable-line no-unused-vars
+function clearRecentChoices() {   
 	if(_isDebugging) {
 		console.debug("clearRecentChoices() starting.");
 	}
@@ -2039,7 +2033,7 @@ function clearRecentChoices() {   // eslint-disable-line no-unused-vars
 	}
 }
 
-function clearPastChoices() {   // eslint-disable-line no-unused-vars
+function clearPastChoices() {
 	if(_isDebugging) {
 		console.debug("clearPastChoices() starting.");
 	}
@@ -2051,7 +2045,7 @@ function clearPastChoices() {   // eslint-disable-line no-unused-vars
 	}
 }
 
-function clearPastChoicesOfNow() {   // eslint-disable-line no-unused-vars
+function clearPastChoicesOfNow() {
 	if(_isDebugging) {
 		console.debug("clearPastChoicesOfNow() starting.");
 	}
@@ -2066,7 +2060,7 @@ function clearPastChoicesOfNow() {   // eslint-disable-line no-unused-vars
 	}
 }
 
-function clearVehicleTracking() {   // eslint-disable-line no-unused-vars
+function clearVehicleTracking() {
 	if(_isDebugging) {
 		console.debug("clearVehicleTracking() starting.");
 	}
@@ -2085,57 +2079,57 @@ function clearVehicleTracking() {   // eslint-disable-line no-unused-vars
 	
 }
 
-function clearTracking() {   // eslint-disable-line no-unused-vars
+function clearTracking() {
 	if(_isDebugging) {
 		console.debug("clearTracking() starting.");
 	}
 	
 	dropElementChildren(document.getElementById("map_canvas"));
 
-	if(markers !== undefined && markers !== null) {
-		for (var i = 0; i < markers.length; i++) {
+	if(_markers !== undefined && _markers !== null) {
+		for (var i = 0; i < _markers.length; i++) {
 			if(_isDebugging) {
 				console.debug("clearTracking() setting markers[" + i.toString() + "].setMap(null).");
 			}
-			markers[i].setMap(null);
+			_markers[i].setMap(null);
 		}
-		markers.length = 0;
-		markers = null;
+		_markers.length = 0;
+		_markers = null;
 	}
 	if(_isDebugging) {
 		console.debug("clearTracking() of markers finished.");
 	}
 
-	if(markerIntervals !== undefined && markerIntervals !== null) {
-		for (var i2 = 0; i2 < markerIntervals.length; i2++) {
+	if(_markerIntervals !== undefined && _markerIntervals !== null) {
+		for (var i2 = 0; i2 < _markerIntervals.length; i2++) {
 			if(_isDebugging) {
 				console.debug("clearTracking()  window.clearInterval(markerIntervals[" + i2.toString() + "]).");
 			}
-			window.clearInterval(markerIntervals[i2]);
+			window.clearInterval(_markerIntervals[i2]);
 		}
-		markerIntervals.length = 0;
-		markerIntervals = null;
+		_markerIntervals.length = 0;
+		_markerIntervals = null;
 	}
 	if(_isDebugging) {
 		console.debug("clearTracking() of markerIntervals finished.");
 	}
 	
-	map = null;
+	_map = null;
 	if(_isDebugging) {
 		console.debug("clearTracking() finished.");
 	}
 }
 
-var isPartOfDeleteRecentChoice = false;
-var isShouldSavePastChoice = false;
+var _isPartOfDeleteRecentChoice = false;
+var _isShouldSavePastChoice = false;
 
-function selectRecentChoice(i) { // eslint-disable-line no-unused-vars
-	if(!isPartOfDeleteRecentChoice) {
+function selectRecentChoice(i) {
+	if(!_isPartOfDeleteRecentChoice) {
 		if(_isDebugging) {
 			console.log("selectRecentChoice(i) based on i=" + i.toString());
 		}
 
-		isShouldSavePastChoice = false;
+		_isShouldSavePastChoice = false;
 		var recentValue = _tblRecentChoice.getByKey(i.toString());
 		if(_isDebugging) {
 			if(recentValue === undefined || recentValue === null) {
@@ -2151,26 +2145,26 @@ function selectRecentChoice(i) { // eslint-disable-line no-unused-vars
 				}
 			}
 			if(parsedRecentChoice.stop !== undefined) {
-				isShouldSavePastChoice = true;
-				isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
+				_isShouldSavePastChoice = true;
+				_isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 				getDepartures(parsedRecentChoice.route, parsedRecentChoice.direction, parsedRecentChoice.stop);
 				return true;
 			}
 			if(parsedRecentChoice.stopNumber !== undefined) {
-				isShouldSavePastChoice = true;
-				isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
+				_isShouldSavePastChoice = true;
+				_isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 				showStop2(parsedRecentChoice);
 				return true;
 			}
 		}
 		popupModal('select i=' + i + '  msg=' + msg);
 	}
-	isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
+	_isPartOfDeleteRecentChoice = false;   // see deleteRecentChoice function
 	return true;
 }
 
-function deleteRecentChoice(i) {   // eslint-disable-line no-unused-vars
-	isPartOfDeleteRecentChoice = true;
+function deleteRecentChoice(i) {
+	_isPartOfDeleteRecentChoice = true;
 
 	for(var j=i; j < _buttonMax; j++) {
 		var tempVal = _tblRecentChoice.getByKey('' + (j + 1));
@@ -2314,16 +2308,16 @@ function rotateRecentChoices(recent) {
 	}
 }
 
-function toggleDebug() {   // eslint-disable-line no-unused-vars
+function toggleDebug() {
 	_isDebugging = !_isDebugging;
-	document.getElementById("utilDebugging").innerText = "Toggle debug " + (_isDebugging ? "off" : "on");
+	document.getElementById("utilDebugging").textContent = "Toggle debug " + (_isDebugging ? "off" : "on");
 }
 
-var form = document.getElementById("busStopForm");
-form.addEventListener("submit", function(event) {
+var _form = document.getElementById("busStopForm");
+_form.addEventListener("submit", function(event) {
 	event.preventDefault();
 
-	var numberedBusStop = _db1.getByKey("o" + form.elements.stopNumber.value);
+	var numberedBusStop = _db1.getByKey("o" + _form.elements.stopNumber.value);
 	if(numberedBusStop === undefined || numberedBusStop === null) {
 		// show a validation error
 		popupModal("stop number not found.");
@@ -2331,10 +2325,10 @@ form.addEventListener("submit", function(event) {
 	}
 	
 	if(_isDebugging) {
-		console.log("Saving stopNumber.value" + form.elements.stopNumber.value);
+		console.log("Saving stopNumber.value" + _form.elements.stopNumber.value);
 	}
 
-	var newValue = '{"stopNumber":' + form.elements.stopNumber.value + ', "description":"' + form.elements.stopDescription.value + '", "routeFilter":"' + form.elements.stopRouteFilter.value + '"}';
+	var newValue = '{"stopNumber":' + _form.elements.stopNumber.value + ', "description":"' + _form.elements.stopDescription.value + '", "routeFilter":"' + _form.elements.stopRouteFilter.value + '"}';
 	_db1.setByKey("BusStopNumberEntered", newValue);
 	showStop2(newValue);
 });
@@ -2465,7 +2459,7 @@ if(Modernizr.localstorage) {
 }
 
 // move this above the loadingElement being hidded and "real" page getting loaded.
-$("footer div small")[0].innerText = "version " + _version;
+$("footer div small")[0].textContent = "version " + _version;
 
 /* added to convert alert(message); to modal popup ----- start */
 // example of code to change from:
@@ -2473,7 +2467,7 @@ $("footer div small")[0].innerText = "version " + _version;
 //                             to:
 //       popupModal(Message);
 
-function popupModal(message) {     // eslint-disable-line no-unused-vars
+function popupModal(message) {
 	var modalElement = document.getElementById("popupModal");
 	var modalCloseButtonElement = modalElement.getElementsByClassName("close")[0];
 
@@ -2497,25 +2491,15 @@ function popupModal(message) {     // eslint-disable-line no-unused-vars
 
 	modalElement.style.display = "block";
 }
-
 /* added to convert alert(message); to modal popup ----- end */
-
 
 /* added to support Modal popup ---- start */
 
 // Get the modal
 var _modal = document.getElementById('myModal');
 
-// Get the button that opens the modal
-//var btn = document.getElementById("myBtn");
-
 // Get the <span> element that closes the modal
 var _span = document.getElementsByClassName("close")[0];
-
-// When the user clicks on the button, open the modal
-//btn.onclick = function() {
-//  modal.style.display = "block";
-//}
 
 // When the user clicks on <span> (x), close the modal
 _span.onclick = function() {	
@@ -2531,7 +2515,7 @@ window.onclick = function(event) {
 
 // Not from the W3 example code:
 
-function showPastChoices() {   // eslint-disable-line no-unused-vars
+function showPastChoices() {
 	// build a table from tblPastChoices
 	//          Day of week, Hour, Choice Button text, Count
 	// 
@@ -2671,8 +2655,6 @@ _selectRouteButton.addEventListener("long-press", function(e) {
 	e.preventDefault();
 
 	// do the work of the long press
-	// console.log(e.target);
-
 	_db1.removeByKey("Routes");
 	popupModal("Routes cleared to allow reloading.");
 });
@@ -2686,8 +2668,6 @@ _selectStopButton.addEventListener("long-press", function(e) {
 	e.preventDefault();
 
 	// do the work of the long press
-	// console.log(e.target);
-
 	_tblRouteDirectionStops.removeByKey(_myRoute + '.' + _myDirection);
 	popupModal("Stops cleared for this route and direction to allow reloading.");
 });
