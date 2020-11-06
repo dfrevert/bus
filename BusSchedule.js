@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201024_1548";
+const _version = "20201105_1730";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -16,7 +16,7 @@ var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to button
 Problems:
 	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
 	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
-	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.
+	2019-05-12   the "Past choices ..." shows well.  Add a button per hour + button name to delete the entry.  done.
 */
 
 // ----------------------------------------------------------------------- start
@@ -2556,10 +2556,12 @@ function showPastChoices() {
 
 				for(var i = 0; i < pastChoicesArray.length; i++) {
 					// look for a match to recentChoice
+					var dayHourI = iDay.toString() + "_" + iHour.toString() + "_" + i.toString();
 
 					if(pastChoicesArray[i].scheduledStop !== undefined) {
 						// handle the button text of a scheduled stop
 						var outTR = document.createElement("tr");
+						outTR.setAttribute("id", dayHourI);
 						outBody.appendChild(outTR);
 
 						var outTd = document.createElement("td");
@@ -2575,9 +2577,15 @@ function showPastChoices() {
 						outTR.appendChild(outTd);
 
 						outTd = document.createElement("td");
-						outTd.textContent = pastChoicesArray[i].count.toString();
-						outTR.appendChild(outTd);
+						outTd.textContent = pastChoicesArray[i].count.toString() + " - ";
 
+						var newButton = document.createElement("button");
+						newButton.setAttribute("type", "button");
+						newButton.setAttribute("class", "btn btn-danger btn-sm");
+						newButton.setAttribute("onclick", "dropPastChoice('" + dayHourI + "', '" + pastChoicesKey + "', '" + JSON.stringify(pastChoicesArray[i]) + "')");
+						newButton.textContent = "Drop";
+						outTd.appendChild(newButton);
+						outTR.appendChild(outTd);
 					} else {
 						if(pastChoicesArray[i].numberedStop !== undefined) {
 							// handle the button text of a numbered stop
@@ -2591,6 +2599,7 @@ function showPastChoices() {
 							}
 
 							var outTR = document.createElement("tr");
+							outTR.setAttribute("id", dayHourI);
 							outBody.appendChild(outTR);
 	
 							var outTd = document.createElement("td");
@@ -2606,7 +2615,14 @@ function showPastChoices() {
 							outTR.appendChild(outTd);
 
 							outTd = document.createElement("td");
-							outTd.textContent = pastChoicesArray[i].count.toString() ;
+							outTd.textContent = pastChoicesArray[i].count.toString() + " - ";
+
+							var newButton = document.createElement("button");
+							newButton.setAttribute("type", "button");
+							newButton.setAttribute("class", "btn btn-danger btn-sm");
+							newButton.setAttribute("onclick", "dropPastChoice('" + dayHourI + "', '" + pastChoicesKey + "', '" + JSON.stringify(pastChoicesArray[i]) + "')");
+							newButton.textContent = "Drop";
+							outTd.appendChild(newButton);
 							outTR.appendChild(outTd);
 						}
 					}
@@ -2622,6 +2638,51 @@ function showPastChoices() {
 	idPastChoicesTable.style.display = "block";
 
 	_modal.style.display = "block";
+}
+
+function dropPastChoice(id, key, pastChoiceString) {
+	// console.log("id = " + id);
+	// console.log("key = " + key);
+	// console.log("pastChoiceString = " + pastChoiceString);
+
+	var pastChoice = JSON.parse(pastChoiceString);
+	var popupRow = document.getElementById(id);
+	popupRow.setAttribute("style", "color: lightgray;");
+
+	var pastChoices = _tblPastChoices.getByKey(key);
+	var pastChoicesArray = JSON.parse(pastChoices);
+	var isScheduledStop = pastChoice.scheduledStop !== undefined;
+	// console.log("pastChoicesArray (before) = " + JSON.stringify(pastChoicesArray));
+	//
+	var matchingChoiceIndex = -1;
+	for(var i = 0; i < pastChoicesArray.length; i++) {
+		if(isScheduledStop && pastChoicesArray[i].scheduledStop !== undefined) {
+			if(pastChoice.scheduledStop.route === pastChoicesArray[i].scheduledStop.route &&
+				pastChoice.scheduledStop.direction === pastChoicesArray[i].scheduledStop.direction &&
+				pastChoice.scheduledStop.stop === pastChoicesArray[i].scheduledStop.stop) {
+					//
+				matchingChoiceIndex = i;
+				break;   // break out of the for loop
+			}
+		} else {
+			if(pastChoice.numberedStop !== undefined && pastChoicesArray[i].numberedStop !== undefined) {
+				// is a Numbered Stop like: {"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"}
+				if(pastChoice.numberedStop.stopNumber === pastChoicesArray[i].numberedStop.stopNumber &&
+					pastChoice.numberedStop.description === pastChoicesArray[i].numberedStop.description &&
+					pastChoice.numberedStop.routeFilter === pastChoicesArray[i].numberedStop.routeFilter) {
+						//
+					matchingChoiceIndex = i;
+					break;   // break out of the for loop
+				}
+			}
+		}
+	}
+
+	if(matchingChoiceIndex > -1) {
+		pastChoicesArray.splice(matchingChoiceIndex, 1);
+		// console.log("pastChoicesArray (after) = " + JSON.stringify(pastChoicesArray));
+		_tblPastChoices.setByKey(key, JSON.stringify(pastChoicesArray));
+	}
 }
 
 function dayOfWeekAsMinimumString(dayOfWeek) {
