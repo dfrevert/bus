@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201106_2031";
+const _version = "20201107_1541";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -16,8 +16,9 @@ var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to button
 Problems:
 	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
 	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
-	2020-11-06   "Drop" works. It needs a matching "Undo".
-	2020-11-06   Use let, not var inside functions
+	2020-11-06   "Drop" works. It needs a matching "Undo". done
+	2020-11-06   Use let, not var inside functions. done
+	2020-11-07   Use findIndex when searching elements of an array   for(let i=0;....)
 */
 
 // ----------------------------------------------------------------------- start
@@ -250,36 +251,22 @@ function savePastChoice(recentChoice) {
 			console.log("pastChoicesArray.length = " + pastChoicesArray.length);
 		}
 		
-		let matchingChoiceIndex = -1;
-		let isScheduledStop = true;   // as opposed to isNumberedStop
-		if(recentChoice.stopNumber !== undefined && recentChoice.stopNumber !== null) {
-			isScheduledStop = false;
-		}
-		for(let i = 0; i < pastChoicesArray.length; i++) {
-			// look for a match to recentChoice
+		let isScheduledStop = recentChoice.stop !== undefined && recentChoice.stop !== null;
 
-			if(isScheduledStop && pastChoicesArray[i].scheduledStop !== undefined) {
-				if(recentChoice.route === pastChoicesArray[i].scheduledStop.route &&
-					recentChoice.direction === pastChoicesArray[i].scheduledStop.direction &&
-					recentChoice.stop === pastChoicesArray[i].scheduledStop.stop) {
-						//
-					matchingChoiceIndex = i;
-					break;   // break out of the for loop
-				}
-			} else {
-				if(!isScheduledStop && pastChoicesArray[i].numberedStop !== undefined) {
-					// is a Numbered Stop like: {"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"}
-					if(recentChoice.stopNumber === pastChoicesArray[i].numberedStop.stopNumber &&
-						recentChoice.description === pastChoicesArray[i].numberedStop.description &&
-						recentChoice.routeFilter === pastChoicesArray[i].numberedStop.routeFilter) {
-							//
-						matchingChoiceIndex = i;
-						break;   // break out of the for loop
-					}
-				}
-			}
-		}
-		
+		let matchingChoiceIndex = pastChoicesArray.findIndex(x => 
+			(      isScheduledStop
+				&& x.scheduledStop !== undefined 
+				&& x.scheduledStop.route === recentChoice.route 
+				&& x.scheduledStop.direction === recentChoice.direction
+				&& x.scheduledStop.stop === recentChoice.stop)
+			|| (
+				   !isScheduledStop
+				&& x.numberedStop !== undefined 
+				&& x.numberedStop.stopNumber === recentChoice.stopNumber 
+				&& x.numberedStop.description === recentChoice.description
+				&& x.numberedStop.routeFilter === recentChoice.routeFilter)
+			);
+
 		if(matchingChoiceIndex === -1) {
 			// create a new element of the pastChoice[] array
 			let choiceNew;
@@ -300,7 +287,7 @@ function savePastChoice(recentChoice) {
 
 // todo
 //     First time experience
-//         Open the Pick Route panel and the Enter Bus Stop panel
+//         Open the Pick Route panel and the Enter Bus Stop panel - done
 //         Need a graphic to indicate where to find a Bus Stop number when at a bus stop
 //     SVG of a numbered bus stop, that includes the text
 //     Morning/Evening function for seasoned traveler
@@ -2400,7 +2387,6 @@ if(Modernizr.localstorage) {
 			if(_isDebugging && choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
 				console.log("loaded choicesForThisDayHour based on (-1, 0)");
 			}
-
 		}
 
 		if(choicesForThisDayHour === undefined || choicesForThisDayHour === null) {
@@ -2410,7 +2396,6 @@ if(Modernizr.localstorage) {
 			if(_isDebugging && choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
 				console.log("loaded choicesForThisDayHour based on (0, -1)");
 			}
-
 		}
 		
 		if(choicesForThisDayHour !== undefined && choicesForThisDayHour !== null) {
@@ -2644,21 +2629,14 @@ function showPastChoices() {
 }
 
 function dropPastChoice(id, key, pastChoiceString) {
-	// console.log("id = " + id);
-	// console.log("key = " + key);
-	// console.log("pastChoiceString = " + pastChoiceString);
-
 	let pastChoice = JSON.parse(pastChoiceString);
 	let popupRow = document.getElementById(id);
 
 	let popupRowCount = popupRow.getElementsByTagName("TD")[3];
-	// console.log("popupRowCount = " + popupRowCount);
 	let popupRowDropButton = popupRowCount.getElementsByTagName("button")[0];
-	// console.log("popupRowDropButton = " + popupRowDropButton);
 	let buttonText = popupRowDropButton.textContent;
-	// console.log("buttonText = " + buttonText);
 
-	if(buttonText == "Drop") {
+	if(buttonText === "Drop") {
 		popupRow.setAttribute("style", "color: lightgray;");
 		popupRowDropButton.textContent = "Undo";
 	} else {
@@ -2670,29 +2648,19 @@ function dropPastChoice(id, key, pastChoiceString) {
 	let pastChoicesArray = JSON.parse(pastChoices);
 	let isScheduledStop = pastChoice.scheduledStop !== undefined;
 
-	let matchingChoiceIndex = -1;
-	for(let i = 0; i < pastChoicesArray.length; i++) {
-		if(isScheduledStop && pastChoicesArray[i].scheduledStop !== undefined) {
-			if(pastChoice.scheduledStop.route === pastChoicesArray[i].scheduledStop.route &&
-				pastChoice.scheduledStop.direction === pastChoicesArray[i].scheduledStop.direction &&
-				pastChoice.scheduledStop.stop === pastChoicesArray[i].scheduledStop.stop) {
-					//
-				matchingChoiceIndex = i;
-				break;   // break out of the for loop
-			}
-		} else {
-			if(pastChoice.numberedStop !== undefined && pastChoicesArray[i].numberedStop !== undefined) {
-				// is a Numbered Stop like: {"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"}
-				if(pastChoice.numberedStop.stopNumber === pastChoicesArray[i].numberedStop.stopNumber &&
-					pastChoice.numberedStop.description === pastChoicesArray[i].numberedStop.description &&
-					pastChoice.numberedStop.routeFilter === pastChoicesArray[i].numberedStop.routeFilter) {
-						//
-					matchingChoiceIndex = i;
-					break;   // break out of the for loop
-				}
-			}
-		}
-	}
+	let matchingChoiceIndex = pastChoicesArray.findIndex(x => 
+		(      isScheduledStop
+			&& x.scheduledStop !== undefined 
+			&& x.scheduledStop.route === pastChoice.route 
+			&& x.scheduledStop.direction === pastChoice.direction
+			&& x.scheduledStop.stop === pastChoice.stop)
+		|| (
+			   !isScheduledStop
+			&& x.numberedStop !== undefined 
+			&& x.numberedStop.stopNumber === pastChoice.stopNumber 
+			&& x.numberedStop.description === pastChoice.description
+			&& x.numberedStop.routeFilter === pastChoice.routeFilter)
+		);
 
 	if(matchingChoiceIndex > -1) {
 		pastChoicesArray.splice(matchingChoiceIndex, 1);
