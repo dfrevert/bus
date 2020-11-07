@@ -10,7 +10,7 @@ function setDbValue(name, setting) {
 
 // based on 2019-01-23 data, see SQLQuery9...
 
-if(db1.getByKey("o302") == null) {
+if(_db1.getByKey("o302") == null) {
 	console.log("loading from stopOffsets.js into local storage");
 	
 	// javascript_text

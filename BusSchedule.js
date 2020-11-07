@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201106_1757";
+const _version = "20201106_2031";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -988,7 +988,9 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 
 function populateRouteDirections(route, responseText) {
 	let arr = JSON.parse(responseText);
-	console.log("populateRouteDirections responseText = " + responseText );
+	if(_isDebugging) {
+		console.log("populateRouteDirections responseText = " + responseText );
+	}
 
 	let elemDiv = document.createElement("div");
 	elemDiv.setAttribute("id", "routeDirectionButtonGroup");
@@ -1075,7 +1077,7 @@ function populateRouteDirectionStops(route, direction, responseText) {
 		const outButton = document.createElement("button");
 		outButton.setAttribute("type", "button");
 		outButton.setAttribute("class", "btn btn-primary mr-1 mb-1");
-		console.log("routeDirectionStopClicked(" + route + ", " + direction + ", '" + arr[i].Value + "', '" + arr[i].Text + "')");
+		// console.log("routeDirectionStopClicked(" + route + ", " + direction + ", '" + arr[i].Value + "', '" + arr[i].Text + "')");
 		outButton.setAttribute("onclick", "routeDirectionStopClicked(" + route + ", " + direction + ", '" + arr[i].Value + "', '" + arr[i].Text + "')");
 		outButton.textContent = arr[i].Text;
 		outDiv.appendChild(outButton);
