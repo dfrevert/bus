@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201111_1218";
+const _version = "20201111_1507";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -253,20 +253,7 @@ function savePastChoice(recentChoice) {
 		}
 		
 		let isScheduledStop = recentChoice.stop !== undefined && recentChoice.stop !== null;
-
-		let matchingChoiceIndex = pastChoicesArray.findIndex(x => 
-			(      isScheduledStop
-				&& x.scheduledStop !== undefined 
-				&& x.scheduledStop.route === recentChoice.route 
-				&& x.scheduledStop.direction === recentChoice.direction
-				&& x.scheduledStop.stop === recentChoice.stop)
-			|| (
-				   !isScheduledStop
-				&& x.numberedStop !== undefined 
-				&& x.numberedStop.stopNumber === recentChoice.stopNumber 
-				&& x.numberedStop.description === recentChoice.description
-				&& x.numberedStop.routeFilter === recentChoice.routeFilter)
-			);
+		let matchingChoiceIndex = pastChoicesIndex(pastChoicesArray, recentChoice);
 
 		if(matchingChoiceIndex === -1) {
 			// create a new element of the pastChoice[] array
@@ -2648,20 +2635,7 @@ function dropPastChoice(id, key, pastChoiceString) {
 	let pastChoices = _tblPastChoices.getByKey(key);
 	let pastChoicesArray = JSON.parse(pastChoices);
 	let isScheduledStop = pastChoice.scheduledStop !== undefined;
-
-	let matchingChoiceIndex = pastChoicesArray.findIndex(x => 
-		(      isScheduledStop
-			&& x.scheduledStop !== undefined 
-			&& x.scheduledStop.route === pastChoice.scheduledStop.route 
-			&& x.scheduledStop.direction === pastChoice.scheduledStop.direction
-			&& x.scheduledStop.stop === pastChoice.scheduledStop.stop)
-		|| (
-			   !isScheduledStop
-			&& x.numberedStop !== undefined 
-			&& x.numberedStop.stopNumber === pastChoice.numberedStop.stopNumber 
-			&& x.numberedStop.description === pastChoice.numberedStop.description
-			&& x.numberedStop.routeFilter === pastChoice.numberedStop.routeFilter)
-		);
+	let matchingChoiceIndex = pastChoicesIndex(pastChoicesArray, isScheduledStop ? pastChoice.scheduledStop : pastChoice.numberedStop);
 
 	if(matchingChoiceIndex > -1) {
 		pastChoicesArray.splice(matchingChoiceIndex, 1);
@@ -2670,6 +2644,23 @@ function dropPastChoice(id, key, pastChoiceString) {
 		pastChoicesArray.push(pastChoice);
 	}
 	_tblPastChoices.setByKey(key, JSON.stringify(pastChoicesArray));
+}
+
+function pastChoicesIndex(pastChoicesArray, findChoice) {
+	// assumes that findChoice does not include a .scheduledStop or .numberedStop wrapper
+	return pastChoicesArray.findIndex(x => 
+		(   findChoice.route !== undefined
+			&& x.scheduledStop !== undefined 
+			&& x.scheduledStop.route === findChoice.route 
+			&& x.scheduledStop.direction === findChoice.direction
+			&& x.scheduledStop.stop === findChoice.stop)
+		|| (
+			findChoice.stopNumber !== undefined
+			&& x.numberedStop !== undefined 
+			&& x.numberedStop.stopNumber === findChoice.stopNumber 
+			&& x.numberedStop.description === findChoice.description
+			&& x.numberedStop.routeFilter === findChoice.routeFilter)
+		);
 }
 
 function dayOfWeekAsMinimumString(dayOfWeek) {
