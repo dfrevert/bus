@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20201107_1541";
+const _version = "20201111_1218";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -19,6 +19,7 @@ Problems:
 	2020-11-06   "Drop" works. It needs a matching "Undo". done
 	2020-11-06   Use let, not var inside functions. done
 	2020-11-07   Use findIndex when searching elements of an array   for(let i=0;....)
+	2020-11-11   Bug in the Past Choices. Duplicate rows instead incrementing. fixed.
 */
 
 // ----------------------------------------------------------------------- start
@@ -2651,15 +2652,15 @@ function dropPastChoice(id, key, pastChoiceString) {
 	let matchingChoiceIndex = pastChoicesArray.findIndex(x => 
 		(      isScheduledStop
 			&& x.scheduledStop !== undefined 
-			&& x.scheduledStop.route === pastChoice.route 
-			&& x.scheduledStop.direction === pastChoice.direction
-			&& x.scheduledStop.stop === pastChoice.stop)
+			&& x.scheduledStop.route === pastChoice.scheduledStop.route 
+			&& x.scheduledStop.direction === pastChoice.scheduledStop.direction
+			&& x.scheduledStop.stop === pastChoice.scheduledStop.stop)
 		|| (
 			   !isScheduledStop
 			&& x.numberedStop !== undefined 
-			&& x.numberedStop.stopNumber === pastChoice.stopNumber 
-			&& x.numberedStop.description === pastChoice.description
-			&& x.numberedStop.routeFilter === pastChoice.routeFilter)
+			&& x.numberedStop.stopNumber === pastChoice.numberedStop.stopNumber 
+			&& x.numberedStop.description === pastChoice.numberedStop.description
+			&& x.numberedStop.routeFilter === pastChoice.numberedStop.routeFilter)
 		);
 
 	if(matchingChoiceIndex > -1) {
