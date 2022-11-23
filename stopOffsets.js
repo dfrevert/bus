@@ -1,3 +1,5 @@
+/*
+
 // var testStopExists = getDbValue("o34");
 
 function setDbValue(name, setting) {
@@ -14049,3 +14051,4 @@ if(_db1.getByKey("o302") == null) {
 
 	console.log("loading from stopOffsets.js into local storage, done.");
 }	
+*/

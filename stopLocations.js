@@ -1,3 +1,4 @@
+/*
 if(_tblStop.getByKey("101N") != null) {
 	console.log("skipping the load from stopLocations.js into local storage");
 } else {
@@ -883,3 +884,4 @@ _tblStop.setByKey("XE34",'{"latitude":45.0195,"longitude":-93.4514}');
 _tblStop.setByKey("XEC6",'{"latitude":44.9966,"longitude":-93.4513}');
 _tblStop.setByKey("XEGV",'{"latitude":44.9991,"longitude":-93.3184}');
 };
+*/
