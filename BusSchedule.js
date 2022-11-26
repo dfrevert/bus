@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20221122_2000";
+const _version = "20221126_1531";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -253,11 +253,9 @@ var _tblVehicleLocation = new DbTable(_db1, 'VehicleLocation');
 var _tblRouteDirections = new DbTable(_db1, 'RouteDirections');
 var _tblRouteDirectionStopDeparture = new DbTable(_db1, 'RouteDirectionStopDeparture');
 var _tblRouteDirectionStops = new DbTable(_db1, 'RouteDirectionStops');
-// var _tblStop = new DbTable(_db1, 'Stop'); // deprecated (2022-11-20)
 var _tblRecentChoice = new DbTable(_db1, 'RecentChoice');
 var _tblPlaces = new DbTable(_db1, 'Places');  // scheduled stops 
 var _tblStops = new DbTable(_db1, 'Stops');    // numbered stops
-
 
 // in order to pre-select a BusDB.RecentChoice.N button, need a table of 
 //     either   route+direction+stop + weekOfYear + dayOfWeek + hourOfDay     + Count
@@ -269,15 +267,15 @@ var _tblStops = new DbTable(_db1, 'Stops');    // numbered stops
 //
 var _tblPastChoices = new DbTable(_db1, 'PastChoices');
 // expected data structure
-//     someday include: weekOfYear     int  1=            53            // use getWeek() on a Date object
+//     **someday** include: weekOfYear     int  1=            53            // use getWeek() on a Date object
 //    
+//   key=   comma separated string?   like "2,7" to represent  Tuesday 7am
 //     dayOfWeek      int  0=Sunday, ... 6 = Saturday  // use getDay()  on a Date object
 //     hourOfDay      int  0, ... , 23                 // use getHour() on a Date object
-//     choices        array of choice    {{"scheduledStop":{"route":14,"direction":4,"stop":"BL54"},"count":1},
-//                                       {"numberedStop":{"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"},"count":2}}
+//   value= array of choice    {{"scheduledStop":{"route":14,"direction":4,"stop":"BL54"},"count":1},
+//                              {"numberedStop":{"stopNumber":15574,"latitude":44.912346,"longitude":-93.252372,"description":"Home to work","routeFilter":"14"},"count":2}
+//                             }
 //
-//     key will need to duplicate the week + day + hour, and so should not duplicate the data?
-//          so, instead a comma separated string?   like "2,7" to represent  Tuesday 7am 
 
 // ---------------- localStorage as object -- end
 
@@ -351,18 +349,9 @@ function savePastChoice(recentChoice) {
 
 // todo
 //     First time experience
-//         Open the Pick Route panel and the Enter Bus Stop panel - done
 //         Need a graphic to indicate where to find a Bus Stop number when at a bus stop
 //     SVG of a numbered bus stop, that includes the text
-//     Morning/Evening function for seasoned traveler
-//         Look at time of day and when first opening the app, use the appropriate setting.
-//
-//  notes
-//      Latitude and longitude, how much accuracy is enough? 1 deg latitude at 45degrees is 364604.73 ft.
-//                                                           50ft is 1.37e-4 or .000137 degrees
-//                                                           1 deg longitude at 45deg    is 258683.23 ft.
-//                                                           50ft is 1.93e-4 or .000193 degrees
-//
+
 function getActiveNumberedBusStop() {
 	let raw = _db1.getByKey("ActiveNumberedBusStop");
 
@@ -431,14 +420,6 @@ function showStop2(enteredStopNumber, isTestExistence = false) {
 		stopNumberInfo = JSON.parse(enteredStopNumber);
 	}
 
-/*	if(_isDebugging) {
-		console.log("showStop2  enteredStopNumber.stopNumber=", enteredStopNumber);
-	}
-	if(enteredStopNumber.stopNumber !== undefined) {
-		showStop(enteredStopNumber.stopNumber, true);
-	}
-*/
-
 	if(_isDebugging) {
 		console.log("showStop2  stopNumberInfo=" + JSON.stringify(stopNumberInfo));
 	}
@@ -478,6 +459,10 @@ function showStop(stopNumber, isTestExistence = false) {
 }
 
 function saveNumberedBusStopInfo(enteredStopNumber) {
+	if(_isDebugging) {
+		console.log("saveNumberedBusStopInfo(" + JSON.stringify(enteredStopNumber) + ")");
+	}
+
 	let activeNumberedBusStop = getActiveNumberedBusStop();
 	if(activeNumberedBusStop
 		&& (enteredStopNumber.stopNumber && activeNumberedBusStop.stopNumber === enteredStopNumber.stopNumber)
@@ -486,32 +471,6 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 		return;
 	}
 	
-	if(_isDebugging) {
-		console.log("saveNumberedBusStopInfo(" + JSON.stringify(enteredStopNumber) + ")");
-	}
-/*
-	// lookup the stop offset
-	let oStopNumber = "";
-	if(enteredStopNumber.stopNumber) {
-		oStopNumber = "o" + enteredStopNumber.stopNumber.toString();
-	} else {
-		oStopNumber = "o" + enteredStopNumber.toString();
-	}
-	let dbStopNumber = _db1.getByKey(oStopNumber);
-	if(dbStopNumber === undefined || dbStopNumber === null) {
-		if(_isDebugging) {
-			console.warn("saveNumberedBusStopInfo(" + enteredStopNumber.stopNumber.toString() + ") being skipped because _db1.getByKey(\"" + oStopNumber + "\") is null. Skipping.");
-		}
-		return;
-	}
-	let offsetForStop = JSON.parse(dbStopNumber);
-	if(offsetForStop === undefined || offsetForStop === null) {
-		if(_isDebugging) {
-			console.warn("saveNumberedBusStopInfo(" + enteredStopNumber.stopNumber.toString() + ") caused offsetForStop to be null. Skipping.");
-		}
-		return;
-	}
-*/
 	let rawStop = _tblStops.getByKey(enteredStopNumber.stopNumber.toString());
 	if(!rawStop) {
 		if(_isDebugging) {
@@ -522,21 +481,7 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 
 	let dbStop = JSON.parse(rawStop);
 
-/*	
-	if(_isDebugging) {
-		console.log("saveNumberedBusStopInfo(" + enteredStopNumber.stopNumber.toString() + ") called, offsetForStop = " + JSON.stringify(offsetForStop));
-	}
-	
-	// offsets have been multiplied by 10,000 and rounded to 0 from these MIN values
-	// @lat_min     @lon_min
-    // 44.707146	-94.157372
-	// stop_id  stop_lat   stop_lon   stop_name
-	// 15574    44.912369  -93.252335 Bloomington Ave S & 50th St E
-	// 	setDbValue("o15574","{\"n\":2052,\"e\":9050}");
-	let latitude = 0.0 + offsetForStop.n/10000.0 + 44.707146;
-	let longitude = 0.0 + offsetForStop.e/10000.0 - 94.157372;
-*/	
-	// ActiveNumberedBusStop needs to include the description from the BusStopNumberEntered
+	// ActiveNumberedBusStop needs to include the description from the enteredStopNumber
 	let description = enteredStopNumber.description;
 	
 	let busStopPoint = {
@@ -553,36 +498,7 @@ function saveNumberedBusStopInfo(enteredStopNumber) {
 
 function buildStopResults(arr, isTestExistence = false) {
 	if(isTestExistence) {
-		let stops = arr.stops;
-		stops.forEach(stop => {
-			let dbStop = _tblStops.getByKey(stop.stop_id);
-			if(!dbStop 
-				|| dbStop.latitude != stop.latitude
-				|| dbStop.longitude != stop.longitude
-				|| dbStop.description != stop.description) {
-					if(stop.latitude != 0.0  && stop.longitude != 0.0) {
-						_tblStops.setByKey(stop.stop_id, JSON.stringify(stop));
-					}
-			}
-			
-			dbStop = _tblStops.getByKey(stop.stop_id);
-		});
-
-		let numberedBusStop = _tblStops.getByKey(_form.elements.stopNumber.value);
-		if(numberedBusStop === undefined || numberedBusStop === null) {
-			// show a validation error
-			popupModal("stop number not found.");
-			return;
-		}
-		
-		if(_isDebugging) {
-			console.log("Saving stopNumber.value" + _form.elements.stopNumber.value);
-		}
-	
-		let newValue = '{"stopNumber":' + _form.elements.stopNumber.value + ', "description":"' + _form.elements.stopDescription.value + '", "routeFilter":"' + _form.elements.stopRouteFilter.value + '"}';
-		_db1.setByKey("BusStopNumberEntered", newValue);
-		showStop2(newValue, false);
-
+		buildStopResultsHandleStopExistence(arr);
 		return;
 	}
 
@@ -596,8 +512,6 @@ function buildStopResults(arr, isTestExistence = false) {
 		showNoActivity();
 		return;
 	}
-
-	let i;
 
 	const newTable = document.createElement("table");
 	newTable.setAttribute("class", "table table-sm table-responsive-sm table-bordered");
@@ -616,7 +530,7 @@ function buildStopResults(arr, isTestExistence = false) {
 		console.log("buildStopResults  targetPoint=", targetPoint);
 	}
 	
-	for(i = 0; i < arrDepartures.length; i++) {
+	for(let i = 0; i < arrDepartures.length; i++) {
 	
 		if(targetPoint !== undefined && arrDepartures[i] !== undefined && arrDepartures[i].route_id !== undefined && targetPoint.routeFilter !== undefined) {
 			let iRouteAndTerminal = arrDepartures[i].route_id + ((arrDepartures[i].terminal === undefined) ? "" : arrDepartures[i].terminal);
@@ -697,6 +611,37 @@ function buildStopResults(arr, isTestExistence = false) {
 	}
 }
 
+function buildStopResultsHandleStopExistence(arr) {
+	let stops = arr.stops;
+	stops.forEach(stop => {
+		let dbStop = _tblStops.getByKey(stop.stop_id);
+		if (!dbStop
+			|| dbStop.latitude != stop.latitude
+			|| dbStop.longitude != stop.longitude
+			|| dbStop.description != stop.description) {
+			if (stop.latitude != 0.0 && stop.longitude != 0.0) {
+				_tblStops.setByKey(stop.stop_id, JSON.stringify(stop));
+			}
+		}
+
+		dbStop = _tblStops.getByKey(stop.stop_id);
+	});
+
+	let numberedBusStop = _tblStops.getByKey(_form.elements.stopNumber.value);
+	if (numberedBusStop === undefined || numberedBusStop === null) {
+		// show a validation error
+		popupModal("stop number not found.");
+	} else {
+		if (_isDebugging) {
+			console.log("Saving stopNumber.value" + _form.elements.stopNumber.value);
+		}
+
+		let newValue = '{"stopNumber":' + _form.elements.stopNumber.value + ', "description":"' + _form.elements.stopDescription.value + '", "routeFilter":"' + _form.elements.stopRouteFilter.value + '"}';
+		_db1.setByKey("BusStopNumberEntered", newValue);
+		showStop2(newValue, false);
+	}
+}
+
 function showNoActivity() {
 	const elementid00B = document.getElementById("id00B");
 
@@ -733,12 +678,13 @@ function getMilesAndDirection(targetPoint, departure) {
 }
 
 var _numberedStopValue;
+
 // to use:     alert("current time is " + new Date().toHHMMSS());
 Date.prototype.toHHMMSS = function () {
 	// want everything up to the first space
 	let timeString = this.toTimeString();
 	let spaceAt = timeString.indexOf(" ");
-	return timeString.substr(0, spaceAt);
+	return timeString.substring(0, spaceAt);
 };
 
 function showVehicles(route) {
@@ -785,14 +731,16 @@ var _secondsElapsedOffset = 0;
 function rewriteActualTableData(route, blockNumber) {
 	// is this function in use? Yes, when a ScheduledStop button is clicked.  BlockNumber is not set.
 	// console.warn("--------------------- rewriteActualTableData called with (", route, ",", blockNumber, ")");
+	if(_isDebugging) {
+		console.log("rewriteActualTableData(", route + "," + blockNumber, ") starting.");				
+	}
 
-	// blockNumber may be null
 	if(blockNumber === null) {
 		if(_myBlockNumber && _myBlockNumber !== "0") {
 			blockNumber = _myBlockNumber;		
 		} else {
 			if(_isDebugging) {
-				console.log("rewriteActualTableData(" + route + ", null) and _myBlockNumber is not set.");				
+				console.log("rewriteActualTableData(" + route + ", null) and _myBlockNumber is not set. Will return.");				
 			}
 			return;
 		}
@@ -800,7 +748,7 @@ function rewriteActualTableData(route, blockNumber) {
 
 	if(blockNumber === null) {
 		if(_isDebugging) {
-			console.log("rewriteActualTableData(route, blockNumber) has no blockNumber, even _myBlockNumber=", _myBlockNumber);				
+			console.log("rewriteActualTableData(route, blockNumber) has no blockNumber, even _myBlockNumber=", _myBlockNumber, "Will return.");
 		}
 		return;
 	}
@@ -810,6 +758,15 @@ function rewriteActualTableData(route, blockNumber) {
 	let busLocationTime = null;
 	let busLastAt = null;
 	let rawVehicleLocation = _tblVehicleLocation.getByKey(route.toString() + '.' + blockNumber.toString());
+	if(!rawVehicleLocation){
+		_myBlockNumber = "0";
+		if(_isDebugging){
+			console.log("rewriteActualTableData(", route, ",", blockNumber, ") _tblVehicleLocation.getByKey( found nothing! Will return");
+		}
+
+		return;
+	}
+	
 	if(rawVehicleLocation){
 		busLastAt = JSON.parse(rawVehicleLocation);
 
@@ -819,11 +776,6 @@ function rewriteActualTableData(route, blockNumber) {
 			if(_isDebugging){
 				console.log("rewriteActualTableData(route, blockNumber) busLastAt.locationTime=", busLastAt.locationTime);
 			}			
-		}
-
-	} else {
-		if(_isDebugging){
-			console.log("rewriteActualTableData(route, blockNumber) route=", route, "blockNumber=", blockNumber);
 		}
 	}
 	
@@ -852,7 +804,7 @@ function rewriteActualTableData(route, blockNumber) {
 	if(_isCurrentTargetANumberedBusStop) {
 		busStopPoint = getActiveNumberedBusStop();
 		if(_isDebugging) {
-			console.warn("busStopPoint=", busStopPoint);
+			console.log("busStopPoint=", busStopPoint);
 		}
 	} else {
 		if(activeStop) {
@@ -872,6 +824,10 @@ function rewriteActualTableData(route, blockNumber) {
 			console.warn("rewriteActualTableData(" + route.toString() + ", " + blockNumber.toString() + ") called, busStopPoint is null!");
 		}
 		return;
+	}
+
+	if(_isDebugging) {
+		console.log("rewriteActualTableData - can the following code(1) be deprecated?");
 	}
 
 	let milesAway = miles(busAtPoint, busStopPoint);
@@ -907,7 +863,7 @@ function rewriteActualTableData(route, blockNumber) {
 
 function elapsedTimePhrase(busLocationTime) {
 	let now = new Date();
-	let timezoneOffsetInMinutes = now.getTimezoneOffset();
+	//let timezoneOffsetInMinutes = now.getTimezoneOffset();
 	let busLocationDateTime = new Date(busLocationTime);
 	//let secondsElapsed = (now.getTime() - busLocationTime.getTime() * 1000 + 1000 * 60 * timezoneOffsetInMinutes) / 1000;
 	let secondsElapsed = (now.getTime() - busLocationDateTime.getTime() * 1000) / 1000;
@@ -964,21 +920,6 @@ function markupBlockNumberButton3(blockString, routeString, stopString) {
 function fromDateTimeNumber(n) {
 	return new Date(n);
 }
-/*
-function fromDateString(str) {
-	let res = str.match(/\/Date\((\d+)(?:([+-])(\d\d)(\d\d))?\)\//);
-	if (res === null)
-		return new Date(NaN); // or something that indicates it was not a DateString
-	let time = parseInt(res[1], 10);
-	if (res[2] && res[3] && res[4]) {
-		let dir = res[2] === "+" ? -1 : 1,
-			h = parseInt(res[3], 10),
-			m = parseInt(res[4], 10);
-		time += dir * (h * 60 + m) * 60000;
-	}
-	return new Date(time);
-}
-*/
 
 function selectRoute() {
 	// if we already know the routes, saved to localStorage, use that.
@@ -1038,29 +979,16 @@ $('#routeButtonGroup button').on("click", function() {
 	_myRoute = $(this).Value;
 });
 
-/* // deprecated
-function busNumberClicked2(blockNumber, routeNumber) {
-	_myRoute = routeNumber;
-	
-	if(_map) {
-		let targetStop = getActiveNumberedBusStop();
-		if(targetStop !== undefined && targetStop !== null) {
-			_myBlockNumber = blockNumber;
-			_myStop = null;
-		}
-	}
-
-	busNumberClicked(blockNumber);
-	return;
-}
-*/
-
 function busNumberClicked3(blockNumber, routeString, stopNumber) {
 	showVehicles(routeString);
 
 	if(stopNumber.toString() !== _myStop.toString()){
 		_myStop = stopNumber;
 	}
+
+	if(routeString.toString() !== _myRoute.toString()){
+		_myRoute = routeString.toString();
+	}	
 
 	if(blockNumber.toString() !== _myBlockNumber.toString()){
 		_myBlockNumber = blockNumber;
@@ -1070,8 +998,7 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 	let stopMine;
 	if(_myBlockNumber === blockNumber) {
 
-		if(_map === undefined) {
-			// stop = _tblStop.getByKey(_myStop);
+		if(_map === undefined || _map === null) {
 			stop = _tblPlaces.getByKey(_myStop);
 			if(stop) {
 				stopMine = JSON.parse(stop);
@@ -1142,85 +1069,7 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 					let newValue = JSON.stringify(arr[i]);	
 					_tblVehicleTracked.setByKey(blockNumber, newValue);
 					
-					if(_map === undefined) {
-						// stop = _tblStop.getByKey(_myStop);
-						stop = _tblPlaces.getByKey(_myStop);
-						if(stop !== undefined && stop !== null) {
-							stopMine = JSON.parse(stop);
-							initializeMap2(stopMine);
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-function busNumberClicked(blockNumber) {
-	let stop;
-	let stopMine;
-	if(_myBlockNumber.toString() === blockNumber.toString()) {
-		if(_map) {
-			// stop = _tblStop.getByKey(_myStop);
-			stop = _tblPlaces.getByKey(_myStop);
-			if(stop !== undefined && stop !== null) {
-				stopMine = JSON.parse(stop);
-				document.getElementById("collapseMap").classList.add("show");			
-				initializeMap2(stopMine);
-				if(_isDebugging) {
-					console.log("busNumberClicked(" +blockNumber.toString() + ") myStop found: stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
-				}
-			} else {
-				if(_isDebugging) {
-					console.log("busNumberClicked(" +blockNumber.toString() + ") map did not exist, myStop not set, a NumberedStop?");
-				}
-
-				let targetStop = getActiveNumberedBusStop();
-				if(targetStop !== undefined && targetStop !== null) {
-					// myBlockNumber = blockNumber;
-					if(_isDebugging) {
-						console.log("busNumberClicked(" +blockNumber.toString() + ") map did not exist, a NumberedStop found.");
-					}
-					document.getElementById("collapseMap").classList.add("show");			
-					initializeMap2(targetStop);
-				} else {
-					if(_isDebugging) {
-						console.warn("busNumberClicked(" +blockNumber.toString() + ") map did not exist, myStop and NumberedStop not set");
-					}
-				}
-			}
-		}
-		showVehicles(_myRoute);
-		//showBusLocation2(_myRoute, blockNumber);
-		return;
-	}
-
-	if(_isDebugging) {
-		console.log("busNumberClicked(" +blockNumber.toString() + ") will switch away from the previous myBlockNumber=" + _myBlockNumber.toString());
-	}
-
-	_myBlockNumber = blockNumber.toString().substring(4,8);
-	// set a timeout for when to stop tracking the bus by BlockNumber.
-	//                                                         20 minutes from now
-	_myBlockNumberTimeout = new Date((new Date()).getTime() + 20 * 60 * 1000);
-	// save the current row's info, so it can be used to populate the missing row.
-
-	if(Modernizr.localstorage) {
-		let p = _tblRouteDirectionStopDeparture.getByKey(_myRoute.toString() + '.' + _myDirection.toString() + '.' + _myStop);
-		if(p !== undefined && p !== null) {
-
-			if(_isDebugging) {
-				console.log("busNumberClicked(" +blockNumber.toString() + ") myRoute=" + _myRoute.toString() + " myDirection=" + _myDirection.toString() + " myStop=" + _myStop);
-			}
-						
-			let arr = JSON.parse(p);
-			let i;
-			for(i = 0; i < arr.length; i++) {
-				if(arr[i].trip_id.substring(4,8) === blockNumber) {
-					let newValue = JSON.stringify(arr[i]);	
-					_tblVehicleTracked.setByKey(blockNumber, newValue);
-					
-					if(_map === undefined) {
+					if(_map === undefined || _map === null) {
 						// stop = _tblStop.getByKey(_myStop);
 						stop = _tblPlaces.getByKey(_myStop);
 						if(stop !== undefined && stop !== null) {
@@ -1488,7 +1337,6 @@ function populateDepartures(route, direction, stop, responseText) {
 	let arr = (JSON.parse(responseText)).departures;
 	let i;
 	let isValid = false;
-	// let hasActuals = false;
 	let targetPoint = null;
 
 	// can also get the latitude/longitude from the (JSON.parse(responseText)).stops;
@@ -1498,18 +1346,7 @@ function populateDepartures(route, direction, stop, responseText) {
 	}
 	
 	let scheduledStop = arrStops[0];
-/*
-	if(scheduledStop === undefined || scheduledStop === null) {
-		scheduledStop = _tblStop.getByKey(stop);
-	}
-	if(scheduledStop) {
-		targetPoint = { "latitude": scheduledStop.latitude, "longitude": scheduledStop.longitude };
-	}
 
-	if(_isDebugging && (targetPoint === undefined || targetPoint === null)) {
-		console.warn("targetPoint is not set. Not found by _tblStop.getByKey(", stop, ")");
-	}
-*/
 	let place = null;
 	let rawPlace = null;
 	rawPlace = _tblPlaces.getByKey(stop.toString());
@@ -1644,7 +1481,7 @@ function populateDepartures(route, direction, stop, responseText) {
 		outTd = document.createElement("td");
 
 		if(arr[i].actual === undefined || arr[i].actual === null || !arr[i].actual) {
-			outTd.textContent = ""; // &nbsp;?
+			outTd.textContent = "";
 		} else {
 // start
 			if(actualBlockNumber && actualBlockNumber.length > 1) {
@@ -1685,12 +1522,10 @@ function populateDepartures(route, direction, stop, responseText) {
 		outTableRow.appendChild(outTd);
 
 		outTd = document.createElement("td");
-//		outTd.textContent = arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "" : passedMilestone(arr[i]).simple;
 		outTd.textContent = arr[i].direction_text;
 		outTableRow.appendChild(outTd);
 
 		outTd = document.createElement("td");
-//		outTd.textContent = milesAndDirectionLetter !== "" ? milesAndDirectionLetter : arr[i].VehicleLatitude === undefined || arr[i].VehicleLatitude === null || arr[i].VehicleLatitude === 0 ? "" : distanceInMiles3Digits(arr[i]);
 		outTd.textContent = milesAndDirectionLetter;
 		outTableRow.appendChild(outTd);
 
@@ -1722,7 +1557,6 @@ function populateDepartures(route, direction, stop, responseText) {
 		else {
 			let newVal = {"route":route, "direction":direction, "stop":stop };
 			_db1.setByKey("RouteDirectionStopActive", JSON.stringify(newVal));
-			//let rawStop = _tblStop.getByKey(stop);
 			let rawStop = _tblPlaces.getByKey(stop);
 			if(rawStop) {
 				let stopParsed = JSON.parse(rawStop);
@@ -1852,7 +1686,6 @@ function distanceNearLatitude45(point, wayPoint) {
 function distanceInMiles3Digits(arrRow) {
 	let strMiles = distanceInMiles(arrRow).toString();
 	return strMiles.substring(0, 4);
-	// return strMiles.substr(0, 4);
 }
 
 function distanceInMiles(arrRow) {
@@ -2322,7 +2155,7 @@ function initializeMap2(position) {
 
 function addBlockButtonToMapTitle() {
 	if(_isDebugging) {
-		console.log("addBlockButtonToMapTitle markupBlockNumberButton(myBlockNumber)  myBlockNumber=" + _myBlockNumber.toString());
+		console.log("addBlockButtonToMapTitle markupBlockNumberButton3(myBlockNumber  myBlockNumber=" + _myBlockNumber.toString());
 		console.log("addBlockButtonToMapTitle myRoute=", _myRoute);
 		console.log("addBlockButtonToMapTitle myStop=", _myStop);
 	}
@@ -2456,7 +2289,7 @@ function addMarker(busLocation) {
 	if(busLocation.time) {
 		let content = '<div>' + busLocation.blockNumber + '</div>';
 		if(busLocation.time > 0) {
-			const busLocationTime = new Date(busLocation.time);
+			const busLocationTime = new Date(busLocation.time * 1000);
 			if(_isDebugging) {
 				console.log("addMarker(busLocation) > 0 busLocationTime=", busLocationTime);
 			}
@@ -2777,25 +2610,6 @@ _form.addEventListener("submit", function(event) {
 	showStop2(_form.elements.stopNumber.value, true);
 });
 //  did not remove the "Violation" verbose message  }, Modernizr.passiveeventlisteners ? {passive: true} : false);
-
-/*
-if(_db1.getByKey("o302") === undefined && _db1.supports_html5_storage){
-	let sNew = document.createElement('script');
-	sNew.async = false; // true;
-	sNew.src = "stopOffsets.js";
-	let s0 = document.getElementsByTagName('script')[0];
-	s0.parentNode.insertBefore(sNew, s0);	
-}
-*/
-/*
-if(_tblStop.getByKey('101N') === undefined && _db1.supports_html5_storage) {
-	let sNew2 = document.createElement('script');
-	sNew2.async = false; // true;
-	sNew2.src = "stopLocations.js";
-	let s02 = document.getElementsByTagName('script')[0];
-	s02.parentNode.insertBefore(sNew2, s02);
-}
-*/
 
 // global variables for location
 var _Marquette400S    = {latitude:44.979001, longitude:-93.268623};   //133 
