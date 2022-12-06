@@ -8,22 +8,11 @@
 
 "use strict";
 
-const _version = "20221202_1200";
+const _version = "20221206_0900";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
-Problems:
-	2019-05-12   remove day of week + hour that have no corresponding tblRecentChoice button.
-	2019-05-12   and/or if no matching tblRecentChoice button exists, create one and fire it.
-	2020-11-06   "Drop" works. It needs a matching "Undo". done
-	2020-11-06   Use let, not var inside functions. done
-	2020-11-07   Use findIndex when searching elements of an array   for(let i=0;....)
-	2020-11-11   Bug in the Past Choices. Duplicate rows instead incrementing. fixed.
-	2022-10-08   June-22 svc.metrotransit.org changed its API to /nextripv2
-    2022-11-17   23 - S - 3842 should be 23 - E or W - 3842 on a Previous Choices button
-	2022-11-20   new API provides location of the stops, so drop the use of stopLocations.js and stopOffsets.js
-
 API examples
 nextripv2/routes ---------------------------------
 
@@ -2423,7 +2412,40 @@ function clearVehicleTracking() {
 	if(_isDebugging) {
 		console.debug("clearVehicleTracking() done.");
 	}
-	
+}
+
+// eslint-disable-next-line no-unused-vars
+function deleteStaleVehicleLocations() {
+	if(_isDebugging) {
+		console.debug("deleteStateVehicleLocations() starting.");
+	}
+
+	if(localStorage.length > 0) {
+		const now = new Date();
+		let index = 0;
+		let isDone = false;
+		while (!isDone) {
+			const key = localStorage.key(index);
+			if(key === null) {
+				isDone = true;
+			} else {
+				if(key.substring(0,21) === "BusDB.VehicleLocation") {
+					const rawVehicleLocation = localStorage.getItem(key);
+					const vehicleLocation = JSON.parse(rawVehicleLocation);
+					const vehicleLocationDateTime = new Date(vehicleLocation.locationTime);
+					if(now.getTime() - vehicleLocationDateTime.getTime() * 1000 > 1000 * 60 * 20) {
+						localStorage.removeItem(key);
+						index--;
+					} 
+				}
+				index++;
+			}
+		}
+	}
+
+	if(_isDebugging) {
+		console.debug("deleteStateVehicleLocations() done.");
+	}
 }
 
 // eslint-disable-next-line no-unused-vars

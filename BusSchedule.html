@@ -5,11 +5,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<link rel="icon" type="image/png" href="bus_transit.ico">
 	<title>Bus Schedule</title>
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
-	
-<!--
-	<link rel="stylesheet" href="bootstrap-4.1.3-dist/css/bootstrap.min.css">
-	-->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" 
+		rel="stylesheet" 
+		integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" 
+		crossorigin="anonymous">
+
 <style>
 
 @keyframes greenToRed {
@@ -164,7 +164,7 @@ div#id00C button.btn.btn-primary,
 		<span class="navbar-toggler-icon"></span>
 	</button>
 	<div class="collapse navbar-collapse" id="navbarCollapse">
-		<ul class="navbar-nav mr-auto">
+		<ul class="navbar-nav me-auto">
 			<li class="nav-item dropdown">
 				<a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button"
 					id="utilDropdown">
@@ -173,6 +173,7 @@ div#id00C button.btn.btn-primary,
 				<div class="dropdown-menu" >
 					<a class="dropdown-item bg-success" id="utilClearTracking" onclick="clearTracking()">Reset Map</a>
 					<a class="dropdown-item bg-warning" id="utilClearVehicleTracking" onclick="clearVehicleTracking()">Delete Vehicle Locations</a>
+					<a class="dropdown-item bg-warning" id="utilDeleteStaleVehicleLocations" onclick="deleteStaleVehicleLocations()">Delete Stale Vehicle Locations</a>
 					<a class="dropdown-item bg-warning" id="utilClearRecentChoices" onclick="clearRecentChoices()">Delete all recent choices</a>
 					<a class="dropdown-item bg-warning" id="utilClearPastChoices" onclick="clearPastChoices()">Delete all previous choice history</a>
 					<a class="dropdown-item bg-success" id="utilClearPastChoicesOfNow" onclick="clearPastChoicesOfNow()">Delete this hour's previous choice history</a>
@@ -203,7 +204,6 @@ div#id00C button.btn.btn-primary,
 			</div>
 		</div>
 		<div id="collapseChoices" class="collapse">
-			<!-- <span id="recentChoice0" class="active hidden btn-group" >&nbsp;</span> -->
 		</div>
 	</div>
 	<div class="card">
@@ -212,7 +212,6 @@ div#id00C button.btn.btn-primary,
 			<div id="detailsPanel" class="card-body" style="padding-top:0;">
 				<div class="progress" style="height:2px; padding:0; margin-bottom:0; margin-top:0;">
 					<div id="detailsProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
-						<!-- <span class="sr-only">70% Complete</span> -->
 					</div>
 				</div>
 				<div id="id00C"></div>
@@ -267,7 +266,6 @@ div#id00C button.btn.btn-primary,
 			<div id="map_button" class="panel-body-sm map-title"></div>
 			<div class="progress" style="height:2px; padding:0; margin-bottom:0;">
 				<div id="mapProgress" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;">
-					<!-- <span class="sr-only">70% Complete</span> -->
 				</div>
 			</div>
 			<div id="map_canvas" class="panel-body" style="width: 100%; height: 500px"></div>
@@ -283,11 +281,6 @@ div#id00C button.btn.btn-primary,
 		<div class="modal-body">
 			<div id="idPastChoicesTable"></div>
 		</div>
-	<!-- 
-		<div class="modal-footer">
-			<h3>Past Choices</h3>
-		</div>
-	-->
 	</div>
 </div>
 <div id="popupModal" class="modal">
@@ -299,11 +292,6 @@ div#id00C button.btn.btn-primary,
 		<div class="modal-body">
 			<div id="idPopupModalBody"></div>
 		</div>
-	<!-- 
-		<div class="modal-footer">
-			<h3>Past Choices</h3>
-		</div>
-	-->
 	</div>
 </div>
 <footer class="footer bg-dark" >
@@ -315,7 +303,9 @@ div#id00C button.btn.btn-primary,
 <script src='modernizr/modernizr.js'></script>
 <script src='jquery/jquery-3.3.1.min.js'></script>
 <!-- JavaScript Bundle with Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
+	integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" 
+	crossorigin="anonymous"></script>
 	
 <!-- <script src="bootstrap-4.1.3-dist/js/bootstrap.bundle.min.js"></script> -->
 <script src='long-press-event/long-press-event.js'></script>
