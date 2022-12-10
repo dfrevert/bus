@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20221206_0900";
+const _version = "20221210_1400";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -523,24 +523,6 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 		console.log("populateStopNumberInfo  targetPoint=", targetPoint);
 	}
 	
-	// collect a list of distinct Routes for the numbered stop.
-	let arrStopRoutes = new Array();
-	arrDepartures.forEach(departure => {
-		if(!arrStopRoutes.some(x => x === departure.route_id)) {
-			if(_isDebugging) {
-				console.log("populateStopNumberInfo(arr) adding route ", departure.route_id, " to arrStopRoutes.");
-			}
-			arrStopRoutes.push(departure.route_id);
-		}
-	});
-
-	arrStopRoutes.forEach(route => {
-		if(_isDebugging) {
-			console.log("populateStopNumberInfo(arr) calling requestVehicleOnRoute(", route, ").");
-		}
-		requestVehiclesOnRoute(route);
-	});
-
 	for(let i = 0; i < arrDepartures.length; i++) {
 	
 		if(targetPoint !== undefined && arrDepartures[i] !== undefined && arrDepartures[i].route_id !== undefined && targetPoint.routeFilter !== undefined) {
@@ -560,6 +542,8 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 			newCell.textContent = arrDepartures[i].route_id + (arrDepartures[i].terminal ? arrDepartures[i].terminal : "");
 		} else {
 			let newButton = document.createElement("button");
+			newButton.setAttribute("id", arrDepartures[i].route_id + "_" + arrDepartures[i].direction_id + "_" + arrDepartures[i].trip_id.substring(4,8));
+			//newButton.setAttribute("id", arrDepartures[i].stop_id.toString() + "_" + arrDepartures[i].trip_id.substring(4,8));
 			newButton.setAttribute("type", "button");
 			newButton.setAttribute("class", "btn btn-primary btn-md");
 			newButton.setAttribute("onclick", "busNumberClicked3('" + arrDepartures[i].trip_id.substring(4,8) + "', '" + arrDepartures[i].route_id + "', '" + arrDepartures[i].stop_id.toString() + "')");
@@ -577,7 +561,7 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 		newCell.textContent = arrDepartures[i].direction_text;
 
 		newCell = newRow.insertCell(-1);
-		newCell.setAttribute("id", "md_" + arrDepartures[i].route_id + "_" + arrDepartures[i].stop_id.toString());
+		newCell.setAttribute("id", "md_" + arrDepartures[i].route_id + "_" + arrDepartures[i].direction_id + "_" + arrDepartures[i].trip_id.substring(4,8));
 		newCell.setAttribute("blockNumber", arrDepartures[i].trip_id.substring(4,8));
 		const milesAndDirection = getMilesAndDirection(targetPoint, arrDepartures[i]);
 		newCell.textContent = milesAndDirection;
@@ -590,7 +574,8 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 	
 	if(targetPoint) {
 		document.getElementById("title1").textContent = "Bus Schedule " + targetPoint.stopNumber;
-		_numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
+		_numberedStopValue = { "stopNumber": targetPoint.stopNumber, "description": targetPoint.description };
+		// _numberedStopValue = JSON.parse('{"stopNumber":' + targetPoint.stopNumber + ', "description":"' + targetPoint.description + '"}');
 		
 		if(_isDebugging) {
 			console.log("populateStopNumberInfo(arr) set _numberedStopValue=" + JSON.stringify(_numberedStopValue));
@@ -620,6 +605,24 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 		let elementid00C = document.getElementById("id00C");
 		elementid00C.parentNode.replaceChild(outDiv, elementid00C);
 	}
+
+	// collect a list of distinct Routes for the numbered stop.
+	let arrStopRoutes = new Array();
+	arrDepartures.forEach(departure => {
+		if(!arrStopRoutes.some(x => x === departure.route_id)) {
+			if(_isDebugging) {
+				console.log("populateStopNumberInfo(arr) adding route ", departure.route_id, " to arrStopRoutes.");
+			}
+			arrStopRoutes.push(departure.route_id);
+		}
+	});
+
+	arrStopRoutes.forEach(route => {
+		if(_isDebugging) {
+			console.log("populateStopNumberInfo(arr) calling requestVehicleOnRoute(", route, ").");
+		}
+		requestVehiclesOnRoute(route);
+	});
 }
 
 function buildStopResultsHandleStopExistence(arr) {
@@ -741,8 +744,33 @@ function populateVehiclesOnRoute(route, responseText) {
 				"speed": vehicle.speed,
 				"bearing": vehicle.bearing
 			};
-			_tblVehicleLocation.setByKey(route.toString() + '.' + blockNumberFromTripId, JSON.stringify(newVal));			
+			_tblVehicleLocation.setByKey(route.toString() + '.' + blockNumberFromTripId, JSON.stringify(newVal));
+			
+			refreshGridValues(route, vehicle, blockNumberFromTripId);
 		}
+	}
+}
+
+function refreshGridValues(route, vehicle, blockNumberFromTripId) {
+	if(_isDebugging) {
+		console.log("refreshGridValues(route=", route, ", vehicle=", vehicle, ", blockNumberFromTripId=", blockNumberFromTripId, ") called." );
+	}
+
+	const id = route + "_" + vehicle.direction_id.toString() + "_" + blockNumberFromTripId;
+	if(document.getElementById(id)) {
+		const text = route + (vehicle.terminal ? vehicle.terminal : "") + ' - trip:' + blockNumberFromTripId + ' @' + minutesSecondsPhrase(vehicle.location_time);
+		document.getElementById(id).textContent = text;
+	}
+
+	if(document.getElementById("md_" + id)) {
+		let targetPoint = null;
+	
+		if(_isCurrentTargetANumberedBusStop) {
+			targetPoint = getActiveNumberedBusStop();
+		}
+	
+		const text = getMilesAndDirection(targetPoint, vehicle);
+		document.getElementById("md_" + id).textContent = text;
 	}
 }
 
@@ -855,7 +883,9 @@ function rewriteActualTableData(route, blockNumber) {
 
 	if(actualRouteBlockNumber) {
 		const newDiv = document.createElement("div");
-		newDiv.setAttribute("id", "firstCellOfDetails");
+		// newDiv.setAttribute("id", "firstCellOfDetails");
+		const id = route + "_";
+		newDiv.setAttribute("id", id);
 		newDiv.setAttribute("class", "bg-warning text-center");   // is this even reached?  -warning instead of -success
 
 		let d1 = document.createElement("div");
@@ -878,6 +908,11 @@ function rewriteActualTableData(route, blockNumber) {
 
 		actualRouteBlockNumber.parentNode.replaceChild(newDiv, actualRouteBlockNumber);
 	}
+}
+
+function minutesSecondsPhrase(busLocationTime) {
+	const busLocationDateTime = new Date(busLocationTime * 1000);
+	return busLocationDateTime.toISOString().substring(14, 19);
 }
 
 function elapsedTimePhrase(busLocationTime) {
@@ -941,7 +976,7 @@ function fromDateTimeNumber(n) {
 }
 
 // eslint-disable-next-line no-unused-vars
-function selectRoute() {
+function requestRoutes() {
 	// if we already know the routes, saved to localStorage, use that.
 	if(Modernizr.localstorage) {
 		let p =  _db1.getByKey("Routes"); 
@@ -955,7 +990,7 @@ function selectRoute() {
 	let url3 = "https://svc.metrotransit.org/nextrip/Routes?format=json";
 
 	xmlhttp3.onreadystatechange = function () {
-		logAjax(xmlhttp3, "selectRoute()");
+		logAjax(xmlhttp3, "requestRoutes()");
 
 		if (xmlhttp3.readyState === 4 && xmlhttp3.status === 200) {
 			populateRoutes(xmlhttp3.responseText);
@@ -1116,25 +1151,21 @@ function routeClicked(route) {
 	selectedRoute.textContent = ": " + route;
 	selectedRoute.setAttribute("class", "ms-1 me-3");
 	
-	selectRouteDirections(route);
+	requestRouteDirections(route, true, true);
 }
 
 // --------------------- RouteDirections
 // eslint-disable-next-line no-unused-vars
 function selectRouteDirectionsUsingMyRoute() {
 	$("#selectStopButton").removeClass("active");	
-	selectRouteDirections2(_myRoute, true, true);
+	requestRouteDirections(_myRoute, true, true);
 }
 
-function selectRouteDirections(route) {
-	selectRouteDirections2(route, true, true);
-}
+function requestRouteDirections(route, shouldCreateButton, shouldPopulate) {
+	if(_isDebugging) {
+		console.log("requestRouteDirections(", route, ", shouldCreateButton=", shouldCreateButton, ", shouldPopulate=", shouldPopulate, ")" );
+	}
 
-function selectRouteDirections3(route) {
-	selectRouteDirections2(route, false, false);
-}
-
-function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 	// if route directions are known, use them
 	if(Modernizr.localstorage) {
 		let p = _tblRouteDirections.getByKey(route);
@@ -1150,10 +1181,10 @@ function selectRouteDirections2(route, shouldCreateButton, shouldPopulate) {
 	let url4 = "https://svc.metrotransit.org/nextrip/directions/" + route;
 	
 	// [{ "direction_id": 0, "direction_name": "Northbound" },{ "direction_id": 1, "direction_name": "Southbound" }]
-	// 0 = Northbound, 1 = Southbound
+	// 0 = Northbound, 1 = Southbound --- can also be Eastbound and Westbound
 
 	xmlhttp4.onreadystatechange = function (shouldCreateButton) {
-		logAjax(xmlhttp4, "selectRouteDirections2(" + route + ", " + shouldCreateButton + ", " + shouldPopulate + ")");
+		logAjax(xmlhttp4, "requestRouteDirections(" + route + ", " + shouldCreateButton + ", " + shouldPopulate + ")");
 
 		if (xmlhttp4.readyState === 4 && xmlhttp4.status === 200) {
 			if (shouldCreateButton) {
@@ -1208,7 +1239,7 @@ function routeDirectionClicked(route, direction) {
 		const routeDirection = directions.find(x => x.direction_id === direction);
 		directionNumberAsString = directionAsString(directionAsNumber(routeDirection));
 		if(_isDebugging) {
-			console.log("directions=", directions, "directionNumberAsString=", directionNumberAsString);
+			console.log("routeDirectClicked  directions=", directions, "directionNumberAsString=", directionNumberAsString);
 		}
 	}
 
@@ -1219,20 +1250,16 @@ function routeDirectionClicked(route, direction) {
 	if(_isDebugging) {
 		console.log("routeDirectClicked(" + route + ", " + direction + ")  myRoute=" + _myRoute + "  myDirection=" + _myDirection);
 	}
-	selectRouteDirectionStops(route, direction);
+	requestRouteDirectionStops(route, direction, true);
 }
 
 // --------------------- RouteDirectionStops
 // eslint-disable-next-line no-unused-vars
 function selectRouteDirectionStopsUsingMyDirection(){
-	selectRouteDirectionStops2(_myRoute, _myDirection, true);
+	requestRouteDirectionStops(_myRoute, _myDirection, true);
 }
 
-function selectRouteDirectionStops(route, direction) {
-	selectRouteDirectionStops2(route, direction, true);
-}
-
-function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
+function requestRouteDirectionStops(route, direction, shouldCreateButtons) {
 	// if route direction stops are known, use them
 	if(Modernizr.localstorage) {
 		let p =  _tblRouteDirectionStops.getByKey(route + '.' + direction);
@@ -1248,7 +1275,7 @@ function selectRouteDirectionStops2(route, direction, shouldCreateButtons) {
 	let url5 = "https://svc.metrotransit.org/nextrip/Stops/" + route + "/" + direction + "?format=json";
 
 	xmlhttp5.onreadystatechange = function (shouldCreateButtons) {
-		logAjax(xmlhttp5, "selectRouteDirectionStops2(" + route + ", " + direction + ", " + shouldCreateButtons + ")");
+		logAjax(xmlhttp5, "requestRouteDirectionStops(" + route + ", " + direction + ", " + shouldCreateButtons + ")");
 		if (xmlhttp5.readyState === 4 && xmlhttp5.status === 200) {
 			if (shouldCreateButtons) {
 				populateRouteDirectionStops(route, direction, xmlhttp5.responseText);
@@ -1317,19 +1344,22 @@ function routeDirectionStopClicked(route, direction, stop, stopDescription) {
 
 function getVehiclesAndDepartures(route, direction, stop) {
 	requestVehiclesOnRoute(route);
-	getDepartures(route, direction, stop);
+	requestDepartures(route, direction, stop);
 	rewriteActualTableData(route, null);
 }
 
 // --------------------- Departures
-function getDepartures(route, direction, stop) {
+function requestDepartures(route, direction, stop) {
 	//  Scheduled stops
+	if(_isDebugging) {
+		console.log("requestDepartures(route=", route, ", direction=", direction, ", stop=", stop, ")");
+	}
 
 	let xmlhttp6 = new XMLHttpRequest();
 	let url6 = "https://svc.metrotransit.org/nextrip/" + route + "/" + direction + "/" + stop + "?format=json";
 	
 	xmlhttp6.onreadystatechange = function () {
-		logAjax(xmlhttp6, "getDepartures(" + route + ", " + direction + ", " + stop + ")");
+		logAjax(xmlhttp6, "requestDepartures(" + route + ", " + direction + ", " + stop + ")");
 		if (xmlhttp6.readyState === 4 && xmlhttp6.status === 200) {
 			populateDepartures(route, direction, stop, xmlhttp6.responseText);
 		}
@@ -1362,7 +1392,7 @@ function populateDepartures(route, direction, stop, responseText) {
 	// can also get the latitude/longitude from the (JSON.parse(responseText)).stops;
 	let arrStops = (JSON.parse(responseText)).stops;
 	if(_isDebugging){
-		console.log("arrStops=", arrStops);
+		console.log("populateDepartures arrStops=", arrStops);
 	}
 	
 	let scheduledStop = arrStops[0];
@@ -1519,18 +1549,24 @@ function populateDepartures(route, direction, stop, responseText) {
 				outTd.appendChild(d1);
 		*/
 				const newButton = markupBlockNumberButton3(actualBlockNumber, route.toString(), stop);
-				let elapsedPhrase = "";
+		//		let elapsedPhrase = "";
+				let minutesSeconds = "";
 
 				if(busAtPoint?.locationTime) {
-					elapsedPhrase = elapsedTimePhrase(busAtPoint.locationTime);
+		//			elapsedPhrase = elapsedTimePhrase(busAtPoint.locationTime);
+					minutesSeconds = minutesSecondsPhrase(busAtPoint.locationTime);
 				} else {
 					if(_isDebugging) {
-						console.log("populateDepartures busAtPoint=", busAtPoint, " busAtPoint?.locationTime=", busAtPoint?.locationTime, " elapsedPhrase=", elapsedPhrase);
+//						console.log("populateDepartures busAtPoint=", busAtPoint, " busAtPoint?.locationTime=", busAtPoint?.locationTime, " elapsedPhrase=", elapsedPhrase);
+						console.log("populateDepartures busAtPoint=", busAtPoint, " busAtPoint?.locationTime=", busAtPoint?.locationTime, " minutesSeconds=", minutesSeconds);
 					}
 				}
 
-				newButton.textContent = milesAndDirectionLetter + " @" + elapsedPhrase + " - " + actualBlockNumber;
-				newButton.setAttribute("id", "firstCellOfDetails");
+//				newButton.textContent = milesAndDirectionLetter + " @" + elapsedPhrase + " - " + actualBlockNumber;
+				newButton.textContent = milesAndDirectionLetter + " @" + minutesSeconds + " - " + actualBlockNumber;
+				// const id = route + "_" + vehicle.direction_id.toString() + "_" + blockNumberFromTripId;
+				// newButton.setAttribute("id", "firstCellOfDetails");
+				newButton.setAttribute("id", route + "_" + arr[i].direction_id.toString() + "_" + actualBlockNumber);
 				newButton.setAttribute("class", "btn btn-success mt-1 mb-1 bg-success");  // btn-outline-success  btn-outline-light  
 		
 				outTd.appendChild(newButton);
@@ -2088,8 +2124,7 @@ function visitAllRoutes() {
 	for(let i = 0; i < arrRoutes.length; i++) {
 		// need to determine the valid directions for each route
 		route = arrRoutes[i].route_id;
-		// is there a function to call that does not create/update a button?
-		selectRouteDirections3(route);
+		requestRouteDirections(route, false, false);
 	}
 	
 	// now, go through the RouteDirections
@@ -2100,7 +2135,7 @@ function visitAllRoutes() {
 			for(let j=0, valuesLength = values.length; j < valuesLength; ++j) {
 				let direction = values[j].Value;
 				route = localStorage.key(i).substring("BusDB.RouteDirections.".length);
-				selectRouteDirectionStops2(route, direction, false);
+				requestRouteDirectionStops(route, direction, false);
 			}
 		}
 	}
