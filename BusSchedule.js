@@ -9,7 +9,7 @@
 "use strict";
 
 const _version = "20230101_1700";
-var _isDebugging = true;
+var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
