@@ -8,8 +8,8 @@
 
 "use strict";
 
-const _version = "20221210_1400";
-var _isDebugging = false;
+const _version = "20230101_1700";
+var _isDebugging = true;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
 /*
@@ -747,6 +747,7 @@ function populateVehiclesOnRoute(route, responseText) {
 			_tblVehicleLocation.setByKey(route.toString() + '.' + blockNumberFromTripId, JSON.stringify(newVal));
 			
 			refreshGridValues(route, vehicle, blockNumberFromTripId);
+			addMarkerForRoute(route, vehicle, blockNumberFromTripId);
 		}
 	}
 }
@@ -828,7 +829,7 @@ function rewriteActualTableData(route, blockNumber) {
 	
 	_myBlockNumber = blockNumber;
 	
-	addMarker({"route":route, "blockNumber":blockNumber, "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
+	// addMarker({"route":route, "blockNumber":blockNumber, "time":busLocationTime, "latitude":busLastAt.latitude, "longitude":busLastAt.longitude});
 	
 	let s1 = elapsedTimePhrase(busLocationTime);
 
@@ -1036,6 +1037,10 @@ $('#routeButtonGroup button').on("click", function() {
 
 // eslint-disable-next-line no-unused-vars
 function busNumberClicked3(blockNumber, routeString, stopNumber) {
+	if(_isDebugging) {
+		console.log("busNumberClicked3(" + blockNumber.toString() + ", " + routeString + ", " + stopNumber.toString() + " - starting");
+	}
+
 	requestVehiclesOnRoute(routeString);
 
 	if(stopNumber.toString() !== _myStop.toString()){
@@ -1082,7 +1087,7 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 				}
 			}
 		}
-		
+/*		
 		if(_map) {
 			const vehicleRaw = _tblVehicleLocation.getByKey(routeString + "." + blockNumber);
 			if(vehicleRaw) {
@@ -1096,7 +1101,7 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 					"longitude":vehicle.longitude});
 			}
 		}
-		
+*/		
 		return;
 	}
 
@@ -2205,6 +2210,10 @@ function initializeMap() {
 }
 
 function initializeMap2(position) {
+	if (_isDebugging) {
+		console.log("initializeMap2(position) position=", position);
+	}
+
 	if (position === undefined 
 		|| position === null 
 		|| position.latitude === undefined 
@@ -2220,11 +2229,12 @@ function initializeMap2(position) {
 		mapTypeId: google.maps.MapTypeId.ROADMAP
 	};
 	if (_isDebugging) {
-		console.log("Calling google to set the map. myOptions=" + JSON.stringify(myOptions));
+		console.log("initializeMap2(position) Calling google to set the map. myOptions=" + JSON.stringify(myOptions));
 	}
 
 	_map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
-	addMarker(position);
+	// addMarker(position);
+	addMarkerForStop(position);
 
 	addBlockButtonToMapTitle();
 	addResetButtonToMapTitle();
@@ -2260,6 +2270,38 @@ function addResetButtonToMapTitle() {
 			divInTitle[0].appendChild(outButton);
 		}
 	}
+}
+
+function addMarkerForRoute(route, vehicle, blockNumberFromTripId) {
+	// only addMarker if this is a marker for the
+	if(route === _myRoute && blockNumberFromTripId === _myBlockNumber) {
+		addMarker(vehicle);
+	}
+}
+
+function addMarkerForStop(position) {
+	if(_markers === undefined || _markers === null) {
+		_markers = [];
+	}
+
+	let current = new google.maps.LatLng(position.latitude, position.longitude);
+	if(current === undefined || current === null) {
+		if(_isDebugging) {
+			console.warn("addMarkerForStop(position)  position=" + JSON.stringify(position) + " Unable to determine a current location.");
+		}
+		return;
+	}
+
+	let marker = new google.maps.Marker({
+		map: _map,
+		position: current,
+		icon: {
+			path: google.maps.SymbolPath.CIRCLE,
+			scale: 5
+			}
+	});
+
+	_markers.push(marker);
 }
 
 var _markerIntervals;
@@ -2300,10 +2342,10 @@ function addMarker(busLocation) {
 		}
 
 		if(activeStop) {
-			//console.log("create map, activeStop = " + JSON.stringify(activeStop));
+			console.log("addMarker(busLocation) create map, activeStop = " + JSON.stringify(activeStop));
 			initializeMap2(activeStop);
 		} else {
-			//console.log("create map, current = " + JSON.stringify(current));
+			console.log("addMarker(busLocation) create map, current = " + JSON.stringify(current));
 			initializeMap2(current);
 		}
 	}	
@@ -2319,9 +2361,9 @@ function addMarker(busLocation) {
 	}
 	
 	let marker;
-	if(busLocation === undefined || busLocation === null || busLocation.time === undefined) {
+	if(busLocation === undefined || busLocation === null || busLocation.location_time === undefined) {
 		if(_isDebugging) {
-			console.log("addMarker(busLocation)  busLocation null or busLocation.time undefined, so add a circular marker based on current=", current);
+			console.log("addMarker(busLocation)  busLocation null or busLocation.location_timetime undefined, so add a circular marker based on current=", current);
 		}
 		marker = new google.maps.Marker({
 			map: _map,
@@ -2336,7 +2378,7 @@ function addMarker(busLocation) {
 		marker = new google.maps.Marker({
 			map: _map,
 			position: current,
-			title: "" + busLocation.blockNumber,
+			title: "" + busLocation.trip_id.substring(4,8),
 			opacity: 1.0
 		});
 		
@@ -2363,17 +2405,17 @@ function addMarker(busLocation) {
 	_markers.push(marker);
 
 	// busLocation.time does not exist when the location is actually a bus stop, not a bus location
-	if(busLocation.time) {
-		let content = '<div>' + busLocation.blockNumber + '</div>';
-		if(busLocation.time > 0) {
-			const busLocationTime = new Date(busLocation.time * 1000);
+	if(busLocation.location_time) {
+		let content = '<div>' + busLocation.trip_id.substring(4,8) + '</div>';
+		if(busLocation.location_time > 0) {
+			const busLocationTime = new Date(busLocation.location_time * 1000);
 			if(_isDebugging) {
 				console.log("addMarker(busLocation) > 0 busLocationTime=", busLocationTime);
 			}
 			content = '<div>' + busLocationTime.toHHMMSS().substr(3,2) + 'm' + busLocationTime.toHHMMSS().substr(6,2) + 's</div>' + content;
 		} else {
 			if(_isDebugging) {
-				console.log("addMarker(busLocation) busLocation.time is not > 0; busLocation.time=", busLocation.time);
+				console.log("addMarker(busLocation) busLocation.location_time is not > 0; busLocation.location_time=", busLocation.location_time);
 			}
 		}
 		
