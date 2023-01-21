@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20230101_1700";
+const _version = "20230121_1100";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -546,6 +546,15 @@ function populateStopNumberInfo(arr, isTestExistence = false) {
 			//newButton.setAttribute("id", arrDepartures[i].stop_id.toString() + "_" + arrDepartures[i].trip_id.substring(4,8));
 			newButton.setAttribute("type", "button");
 			newButton.setAttribute("class", "btn btn-primary btn-md");
+
+			// there is enough information to give map creation advice on the zoom level and a revised centerpoint for the map.
+			//     center should be at the midpoint of a line between target and arrDepartures[i].latitude, .longitude
+			//     zoom needs to adjust so that both endpoints are on screen
+			// an alternative is just to use the milesAndDirection value for miles and do something like 
+			//     miles < 1 = zoom 14
+			//     miles < 5 = zoom 13
+			//     miles < 10 = zoom 12		
+			//     
 			newButton.setAttribute("onclick", "busNumberClicked3('" + arrDepartures[i].trip_id.substring(4,8) + "', '" + arrDepartures[i].route_id + "', '" + arrDepartures[i].stop_id.toString() + "')");
 			newButton.textContent = arrDepartures[i].route_id + (arrDepartures[i].terminal ? arrDepartures[i].terminal : "") + ' - trip:' + arrDepartures[i].trip_id.substring(4,8);
 			newCell.appendChild(newButton);
@@ -2209,32 +2218,32 @@ function initializeMap() {
 	return initializeMap2(_currentDeviceGps); 
 }
 
-function initializeMap2(position) {
+function initializeMap2(positionOfStop) {
 	if (_isDebugging) {
-		console.log("initializeMap2(position) position=", position);
+		console.log("initializeMap2(positionOfStop) positionOfStop=", positionOfStop);
 	}
 
-	if (position === undefined 
-		|| position === null 
-		|| position.latitude === undefined 
-		|| position.latitude === null) { return; }
+	if (positionOfStop === undefined 
+		|| positionOfStop === null 
+		|| positionOfStop.latitude === undefined 
+		|| positionOfStop.latitude === null) { return; }
 
 	if (window.getComputedStyle(document.getElementById("collapseMap"), null)
 			.getPropertyValue("display") === "none") { return; }
 
-	let latlng = new google.maps.LatLng(position.latitude, position.longitude);
+	let latlng = new google.maps.LatLng(positionOfStop.latitude, positionOfStop.longitude);
 	let myOptions = {
-		zoom: 14,   // stackoverflow version was set to 1
+		zoom: 13, // 14, the bus often was not visible   // stackoverflow version was set to 1
 		center: latlng,
 		mapTypeId: google.maps.MapTypeId.ROADMAP
 	};
 	if (_isDebugging) {
-		console.log("initializeMap2(position) Calling google to set the map. myOptions=" + JSON.stringify(myOptions));
+		console.log("initializeMap2(positionOfStop) Calling google to set the map. myOptions=" + JSON.stringify(myOptions));
 	}
 
 	_map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
 	// addMarker(position);
-	addMarkerForStop(position);
+	addMarkerForStop(positionOfStop);
 
 	addBlockButtonToMapTitle();
 	addResetButtonToMapTitle();
