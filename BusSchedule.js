@@ -8,7 +8,7 @@
 
 "use strict";
 
-const _version = "20230121_1100";
+const _version = "20230310_1700";
 var _isDebugging = false;
 var _buttonMax = 20; // number of recentChoiceButtons, an array from 0 to buttonMax - 1
 
@@ -777,6 +777,16 @@ function refreshGridValues(route, vehicle, blockNumberFromTripId) {
 	
 		if(_isCurrentTargetANumberedBusStop) {
 			targetPoint = getActiveNumberedBusStop();
+		} else {
+			let activeStop = _db1.getByKey("ActiveScheduledBusStop");
+			if(activeStop !== undefined && activeStop !== null) {
+				targetPoint = JSON.parse(activeStop);
+			} else {
+				if(_isDebugging) {
+					console.warn("refreshGridValues(route=", route, ", vehicle=", vehicle, ", blockNumberFromTripId=", blockNumberFromTripId, ") unable to determine a targetPoint." );
+				}
+				return;
+			}
 		}
 	
 		const text = getMilesAndDirection(targetPoint, vehicle);
@@ -850,7 +860,7 @@ function rewriteActualTableData(route, blockNumber) {
 		// let raw = _tblStop.getByKey(routeDirectionStopActive.stop);
 		let raw = _tblPlaces.getByKey(routeDirectionStopActive.stop);
 		if(raw === undefined || raw === null) {
-			console.log("Warning: rewriteActualTableData could not find an activeStop.  tblStop.getByKey(" + routeDirectionStopActive.stop + ") is null.");
+			console.warn("Warning: rewriteActualTableData could not find an activeStop.  tblStop.getByKey(" + routeDirectionStopActive.stop + ") is null.");
 		}
 		else {
 			activeStop = JSON.parse(raw);
@@ -865,10 +875,18 @@ function rewriteActualTableData(route, blockNumber) {
 		}
 	} else {
 		if(activeStop) {
-			let actualElement = document.getElementById("Actual_" + route.toString() + "_" + blockNumber.toString());
+			let actualElement = document.getElementById(route.toString() 
+				+ "_" + routeDirectionStopActive.direction.toString() 
+				+ "_" + blockNumber.toString());
+
+			// let actualElement = document.getElementById("Actual_" + route.toString() + "_" + blockNumber.toString());
 			if(actualElement) {
 				busStopPoint =  {"latitude": activeStop.latitude, "longitude": activeStop.longitude};
-			}
+			} else {
+				if(_isDebugging) {
+					console.warn("rewriteActualTableData(", route, ",", blockNumber, ") activeStop element was not found.");
+				}
+			}			
 		} else {
 			if(_isDebugging) {
 				console.warn("activeStop is falsey!", "Actual_" + route.toString() + "_" + blockNumber.toString());
@@ -1047,7 +1065,7 @@ $('#routeButtonGroup button').on("click", function() {
 // eslint-disable-next-line no-unused-vars
 function busNumberClicked3(blockNumber, routeString, stopNumber) {
 	if(_isDebugging) {
-		console.log("busNumberClicked3(" + blockNumber.toString() + ", " + routeString + ", " + stopNumber.toString() + " - starting");
+		console.log("busNumberClicked3(" + blockNumber.toString() + ", " + routeString + ", " + stopNumber.toString() + ") - starting");
 	}
 
 	requestVehiclesOnRoute(routeString);
@@ -1068,35 +1086,48 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 	let stopMine;
 	if(_myBlockNumber === blockNumber) {
 
+		if(_isDebugging) {
+			console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) _myBlockNumber === blockNumber ===" + _myBlockNumber.toString());
+		}
+
 		if(_map === undefined || _map === null) {
 			stop = _tblPlaces.getByKey(_myStop);
+
+			if(_isDebugging) {
+				console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) _map is null/undefined  stop =" + stop);
+			}
+
 			if(stop) {
 				stopMine = JSON.parse(stop);
 				document.getElementById("collapseMap").classList.add("show");			
 				initializeMap2(stopMine);
 				if(_isDebugging) {
-					console.log("busNumberClicked3(" + blockNumber.toString() + ") myStop found: stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
+					console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) myStop found: stopMine=" + JSON.stringify(stopMine) + " initializeMap2 called.");
 				}
 			} else {
 				if(_isDebugging) {
-					console.log("busNumberClicked3(" + blockNumber.toString() + ") map did not exist, myStop not set, a NumberedStop?");
+					console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) map did not exist, myStop not set, a NumberedStop?");
 				}
 
 				let targetStop = getActiveNumberedBusStop();
 				if(targetStop !== undefined && targetStop !== null) {
 					if(_isDebugging) {
-						console.log("busNumberClicked3(" + blockNumber.toString() + ") map did not exist, a NumberedStop found.");
+						console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) map did not exist, a NumberedStop found.");
 					}
 					document.getElementById("collapseMap").classList.add("show");
 					initializeMap2(targetStop);
 				} else {
 					if(_isDebugging) {
-						console.warn("busNumberClicked3(" + blockNumber.toString() + ") map did not exist, myStop and NumberedStop not set");
+						console.warn("busNumberClicked3(" + blockNumber.toString() + ", ...) map did not exist, myStop and NumberedStop not set");
 					}
 				}
 			}
 		}
 /*		
+		// too early, the requestVehiclesOnRoute has not happened yet.
+		//        requestVehiclesOnRoute(routeString);     // when this finishes, and 
+		//        initializeMap2(stopMine);                // and this has run recently
+		//                                                 // and _map now exists, add a marker
 		if(_map) {
 			const vehicleRaw = _tblVehicleLocation.getByKey(routeString + "." + blockNumber);
 			if(vehicleRaw) {
@@ -1115,7 +1146,7 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 	}
 
 	if(_isDebugging) {
-		console.log("busNumberClicked3(" + blockNumber.toString() + ") will switch away from the previous myBlockNumber=" + _myBlockNumber.toString());
+		console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) will switch away from the previous myBlockNumber=" + _myBlockNumber.toString());
 	}
 
 	_myBlockNumber = blockNumber.toString();
@@ -1126,10 +1157,15 @@ function busNumberClicked3(blockNumber, routeString, stopNumber) {
 
 	if(Modernizr.localstorage) {
 		let p = _tblRouteDirectionStopDeparture.getByKey(_myRoute.toString() + '.' + _myDirection.toString() + '.' + _myStop.toString());
+
+		if(_isDebugging) {
+			console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) _tblRouteDirectionStopDeparture.getByKey(" + _myRoute.toString() + '.' + _myDirection.toString() + '.' + _myStop.toString() + "  p=" + p);
+		}
+
 		if(p) {
 
 			if(_isDebugging) {
-				console.log("busNumberClicked3(" + blockNumber.toString() + ") myRoute=" + _myRoute.toString() + " myDirection=" + _myDirection.toString() + " myStop=" + _myStop.toString());
+				console.log("busNumberClicked3(" + blockNumber.toString() + ", ...) myRoute=" + _myRoute.toString() + " myDirection=" + _myDirection.toString() + " myStop=" + _myStop.toString());
 			}
 						
 			let arr = JSON.parse(p);
@@ -1479,7 +1515,12 @@ function populateDepartures(route, direction, stop, responseText) {
 					outTableRow = document.createElement("tr");
 					// 	["Actual"
 					outTd = document.createElement("td");
-					outTd.setAttribute("id", "Actual_" + route.toString() + "_" + pI.BlockNumber.toString());
+					// outTd.setAttribute("id", "Actual_" + route.toString() + "_" + pI.BlockNumber.toString());
+					if(_isDebugging) {
+						console.warn("requestDepartures(route=", route, ", direction=", direction, ", stop=", stop, ") pI.direction.toString() =", pI.direction);
+					}
+
+					outTd.setAttribute("id", route.toString + "_" + pI.direction.toString() + "_" + pI.BlockNumber.toString());
 					// outTd.setAttribute("class", "bg-success");  // stop coloring the background green
 					outTd.textContent = pI.Actual;					
 					outTableRow.appendChild(outTd);
@@ -1611,6 +1652,7 @@ function populateDepartures(route, direction, stop, responseText) {
 
 		outTd = document.createElement("td");
 		outTd.textContent = milesAndDirectionLetter;
+		outTd.setAttribute("id", "md_" + arr[i].route_id + "_" + arr[i].direction_id + "_" + arr[i].trip_id.substring(4,8));
 		outTableRow.appendChild(outTd);
 
 		outTable.appendChild(outTableRow);
@@ -1783,6 +1825,11 @@ function distanceInMiles(arrRow) {
 		let activeStop = _db1.getByKey("ActiveScheduledBusStop");
 		if(activeStop !== undefined && activeStop !== null) {
 			targetPoint = JSON.parse(activeStop);
+		} else {
+			if(_isDebugging) {
+				console.warn("distanceInMiles(arrRow) unable to determine a targetPoint.");
+			}
+			return "";
 		}
 	}
 	
@@ -2282,8 +2329,15 @@ function addResetButtonToMapTitle() {
 }
 
 function addMarkerForRoute(route, vehicle, blockNumberFromTripId) {
+	if(_isDebugging) {
+		console.log("addMarkerForRoute(" + route + ", ", vehicle, ", " + blockNumberFromTripId + ") _myRoute=" + _myRoute + ", _myBlockNumber=" + _myBlockNumber);
+	}
+
 	// only addMarker if this is a marker for the
-	if(route === _myRoute && blockNumberFromTripId === _myBlockNumber) {
+	if(route === _myRoute.toString() && blockNumberFromTripId === _myBlockNumber) {
+		if(_isDebugging) {
+			console.log("addMarkerForRoute(...) calling addMarker(", vehicle, ")");
+		}
 		addMarker(vehicle);
 	}
 }
