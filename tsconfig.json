@@ -3,8 +3,15 @@
       "outDir": "./built",
       "allowJs": true,
       "target": "es6",
-      // "noImplicitAny": true,
+      "noImplicitAny": true,
       // "strictNullChecks": true,
+      // must set strictNullChecks to true to set "exactOptionalPropertyTypes": true,
+      "allowUnreachableCode": false,
+      "alwaysStrict": true,
+      "noFallthroughCasesInSwitch": true,
+      "noImplicitOverride": true,
+      // "noUnusedLocals": true, // shows errors when code is called from html
+      "noUnusedParameters": true,
       "moduleResolution": "node",
     },
     "include": ["./src/**/*"]
